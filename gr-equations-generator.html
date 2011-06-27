@@ -1,0 +1,392 @@
+<html>
+   <head>
+      <script type="text/javascript">
+	       // set up metric matrix
+	       var rows = [ "t", "x" ];
+		   var metric = [];
+		   metric[0] = new Array(2);
+		   metric[1] = new Array(2);
+		   
+		   metric[0][0] = "A";
+		   metric[0][1] = 0;
+		   metric[1][0] = 0;
+		   metric[1][1] = "B";
+		   
+		   var invmetric = [];
+		   invmetric[0] = new Array(2);
+		   invmetric[1] = new Array(2);
+		   
+		   invmetric[0][0] = "(1/A)";
+		   invmetric[0][1] = 0;
+		   invmetric[1][0] = 0;
+		   invmetric[1][1] = "(1/B)";		   
+		   
+		   christoffel = [];
+		   christoffel[0] = new Array(2);
+		   christoffel[1] = new Array(2);
+		   christoffel[0][0] = new Array(2);
+		   christoffel[0][1] = new Array(2);
+		   christoffel[1][0] = new Array(2);
+		   christoffel[1][1] = new Array(2);
+		   
+		   var likechristoffels = [];
+		   
+		   function onClickGenerateEquations()
+		   {
+		      var resultsdiv = document.getElementById("resultsdiv");
+			  
+			  // compute Christoffel symbols
+			  // for each i
+			  for (var i = 0; i < rows.length; i++)
+			  {
+			     // for each k
+				 for (var k = 0; k < rows.length; k++)
+				 {
+				    // for each l
+					for (var l = 0; l < rows.length; l++)
+					{
+					   resultsdiv.innerHTML += "&Gamma;<sup>" + rows[i] + "</sup><sub>" + rows[k] + rows[l] + "</sub> = ";
+					   var partialPositive1 = [];
+					   var partialPositive2 = [];
+					   var partialNegative = [];
+					   // for each m, write the christoffel
+                       for (var m = 0; m < rows.length; m++)
+                       {
+					      partialPositive1[m] = "&part;g<sub>" + rows[m] + rows[k] + "</sub>/&part;" + rows[l];
+						  partialPositive2[m] =  "&part;g<sub>" + rows[m] + rows[l] + "</sub>/&part;" + rows[k];
+						  partialNegative[m] = "&part;g<sub>" + rows[k] + rows[l] + "</sub>/&part;"+ rows[m];
+					      resultsdiv.innerHTML += "0.5 g<sup>" + rows[i] + rows[m] + "</sup>(" + partialPositive1[m] + " + " + partialPositive2[m] + " - " + partialNegative[m] + ") ";
+						  if (m+1 < rows.length)
+						  {
+						     resultsdiv.innerHTML += " + ";
+						  }
+                       }			
+					   // remove like terms
+					   RemoveLikeTerms(rows.length, partialPositive1, partialNegative);
+					   RemoveLikeTerms(rows.length, partialPositive2, partialNegative);
+					  
+                       resultsdiv.innerHTML += "<br> &nbsp;&nbsp;&nbsp; = ";
+					   var partialPositive1Expanded = ["0", "0"];
+					   var partialPositive2Expanded = ["0", "0"];
+					   var partialNegativeExpanded = ["0", "0"];
+					   // also expand out the metric
+                       for (var m = 0; m < rows.length; m++)
+                       {
+					      //if (partialPositive1[m] != 0)
+						  //{
+						    partialPositive1Expanded[m] = "&part;" + metric[m][k] + "/&part;" + rows[l];
+						  //}
+						  //if (partialPositive2[m] != 0)
+						  //{
+						    partialPositive2Expanded[m] = "&part;" + metric[m][l] + "/&part;" + rows[k];
+						  //}
+						  //if (partialNegative[m] != 0)
+						  //{
+						    partialNegativeExpanded[m] = "&part;" + metric[k][l] + "/&part;"+ rows[m];
+						  //}
+					      resultsdiv.innerHTML += "0.5 " + invmetric[i][m] + "(" + partialPositive1Expanded[m] + " + " + partialPositive2Expanded[m] + " - " + partialNegativeExpanded[m] + ") ";
+						  if (m+1 < rows.length)
+						  {
+						     resultsdiv.innerHTML += " + ";
+						  }
+                       }					   
+					   resultsdiv.innerHTML += "<br> &nbsp;&nbsp;&nbsp; = ";
+					   // and expand out the zeros
+                       var resultsstring = ""					   
+                       for (var m = 0; m < rows.length; m++)
+                       {
+					      if (invmetric[i][m] != 0)
+						  {
+					         resultsstring += "0.5 " + invmetric[i][m] + "(";
+							 if (metric[m][k] != 0 && partialPositive1[m] != 0) {
+							    resultsstring += "&part;" + metric[m][k] + "/&part;" + rows[l];
+                             }
+                             else 
+                             { 
+							    resultsstring += "0";
+                             }
+							 resultsstring += " + "; 
+							 if (metric[m][l] != 0 && partialPositive2[m] != 0)
+							 {
+							    resultsstring += "&part;" + metric[m][l] + "/&part;" + rows[k];
+                             }
+                             else
+                             {
+							    resultsstring += "0";
+                             }
+							 resultsstring += " - ";
+							 if (metric[k][l] != 0 && partialNegative[m] != 0)
+							 {
+							    resultsstring += "&part;" + metric[k][l] + "/&part;"+ rows[m];
+                             }
+                             else 
+                             {
+                                resultsstring += "0";
+                             }
+							 resultsstring += ")";
+						  } 
+						  else 
+						  {
+						     resultsstring += "0";
+						  }
+						  if (m+1 < rows.length)
+						  {
+						     resultsstring += " + ";
+						  }
+                       }					
+					   resultsstring = Cleanup(resultsstring);
+					   resultsstring = resultsstring.replace(/ /g, "");
+					   
+					   // load the christoffel array for later use
+					   christoffel[i][k][l] = "(" + resultsstring + ")";
+                       resultsdiv.innerHTML += resultsstring;   					   
+					   resultsdiv.innerHTML += "<br>";
+					}
+			     }
+			  }
+			  
+			  CheckForSubstitutions();
+			  
+	          for (var rho = 0; rho < rows.length; rho++)
+              {
+			      for (var sigma = 0; sigma < rows.length; sigma++)
+				  {
+				     for (var mu = 0; mu < rows.length; mu++)
+					 {
+					    for (var nu = 0; nu < rows.length; nu++)
+						{
+					       // variables to help reduce the equation
+						   var positiveSingleTerms = [];
+						   var negativeSingleTerms = [];
+						   var positiveDualTerms = [];
+ 						   var negativeDualTerms = [];
+						   var positiveDualTermsReverse = [];
+ 						   var negativeDualTermsReverse = [];
+						
+						   resultsdiv.innerHTML += "R<sup>" + rows[rho] + "</sup><sub>" + rows[sigma] + rows[mu] + rows[nu] + "</sub> = ";
+						   for (var lambda = 0; lambda < rows.length; lambda++)
+						   {
+						      positiveSingleTerms[lambda] = "&part;" + rows[mu] + "&Gamma;<sup>" + rows[rho] + "</sup><sub>" + rows[nu] + rows[sigma] + "</sub>";
+							  negativeSingleTerms[lambda] = "&part;" + rows[nu] + "&Gamma;<sup>" + rows[rho] + "</sup><sub>" + rows[mu] + rows[sigma] + "</sub>";
+							  positiveDualTerms[lambda] = "&Gamma;<sup>" + rows[rho] + "</sup><sub>" + rows[mu] + rows[lambda] + "</sub>&Gamma;<sup>" + rows[lambda] + "</sup><sub>" + rows[nu] + rows[sigma] + "</sub>";
+							  negativeDualTerms[lambda] = "&Gamma;<sup>" + rows[rho] + "</sup><sub>" + rows[nu] + rows[lambda] + "</sub>&Gamma;<sup>" + rows[lambda] + "</sup><sub>" + rows[mu] + rows[sigma] + "</sub>";
+						      resultsdiv.innerHTML += positiveSingleTerms[lambda] + " - " + negativeSingleTerms[lambda] + " + " + positiveDualTerms[lambda] + " - " + negativeDualTerms[lambda];
+							  if (lambda+1 < rows.length)
+							  {
+							     resultsdiv.innerHTML += " + ";
+							  }
+						   }
+						   resultsdiv.innerHTML += "<br>&nbsp;&nbsp;&nbsp; = ";
+                           // perform a reduction, if there is a positive and negative set of terms with the exact same value, zero both
+						   for (var lambda = 0; lambda < rows.length; lambda++)
+						   {
+						      var gammaString1="";							  
+							  var gammaString2="";
+							  // if the christoffel symbol is equal to another, perform the substitution
+							  gammaString1 = "&Gamma;<sup>" + rows[rho] + "</sup><sub>" + rows[nu] + rows[sigma] + "</sub>";
+							  gammaString1 = SubstituteEquivalents(gammaString1);
+						      positiveSingleTerms[lambda] = "&part;" + rows[mu] + gammaString1 ;
+							  
+							  // if the christoffel symbol is equal to another, perform the substitution
+							  gammaString1 = "&Gamma;<sup>" + rows[rho] + "</sup><sub>" + rows[mu] + rows[sigma] + "</sub>"
+                              gammaString1 = SubstituteEquivalents(gammaString1);
+							  negativeSingleTerms[lambda] = "&part;" + rows[nu] + gammaString1;
+							  
+							  // if the christoffel symbol is equal to another, perform the substitution
+							  gammaString1 = "&Gamma;<sup>" + rows[rho] + "</sup><sub>" + rows[mu] + rows[lambda] + "</sub>";
+							  gammaString2 = "&Gamma;<sup>" + rows[lambda] + "</sup><sub>" + rows[nu] + rows[sigma] + "</sub>";
+							  gammaString1 = SubstituteEquivalents(gammaString1);
+							  gammaString2 = SubstituteEquivalents(gammaString2);
+							  positiveDualTerms[lambda] = gammaString1 + gammaString2 ;
+							  positiveDualTermsReverse[lambda] = gammaString2 + gammaString1;
+							  
+							  // if the christoffel symbol is equal to another, perform the substitution
+							  gammaString1 = "&Gamma;<sup>" + rows[rho] + "</sup><sub>" + rows[nu] + rows[lambda] + "</sub>"; 
+							  gammaString2 = "&Gamma;<sup>" + rows[lambda] + "</sup><sub>" + rows[mu] + rows[sigma] + "</sub>";
+							  gammaString1 = SubstituteEquivalents(gammaString1);
+							  gammaString2 = SubstituteEquivalents(gammaString2);
+							  negativeDualTerms[lambda] = gammaString1 + gammaString2;
+							  negativeDualTermsReverse[lambda] = gammaString2 + gammaString1;
+							  
+						      resultsdiv.innerHTML += positiveSingleTerms[lambda] + " - " + negativeSingleTerms[lambda] + " + " + positiveDualTerms[lambda] + " - " + negativeDualTerms[lambda];
+							  if (lambda+1 < rows.length)
+							  {
+							     resultsdiv.innerHTML += " + ";
+							  }
+						   }
+						   RemoveLikeTerms(rows.length, positiveSingleTerms, negativeSingleTerms);
+						   RemoveLikeProducts(rows.length, positiveDualTerms, positiveDualTermsReverse, negativeDualTerms, negativeDualTermsReverse)
+						   //RemoveLikeTerms(rows.length, positiveDualTerms, negativeDualTerms);						   
+						   resultsdiv.innerHTML += "<br>&nbsp;&nbsp;&nbsp; = ";
+						   
+						   var resultsstring = "";
+						   for (var lambda = 0; lambda < rows.length; lambda++)
+						   {
+						      resultsstring += positiveSingleTerms[lambda] + " - " + negativeSingleTerms[lambda] + " + " + positiveDualTerms[lambda] + " - " + negativeDualTerms[lambda];
+							  if (lambda+1 < rows.length)
+							  {
+							     resultsstring += " + ";
+							  }
+						   }
+						   resultsdiv.innerHTML += resultsstring;
+						   resultsdiv.innerHTML += "<br>&nbsp;&nbsp;&nbsp; = ";
+						   
+					       resultsstring = Cleanup(resultsstring);
+					       						   
+
+						   resultsdiv.innerHTML += resultsstring;
+						   resultsdiv.innerHTML += "<br>&nbsp;&nbsp;&nbsp; = ";
+						   
+						   resultsstring = "";
+						   for (var lambda = 0; lambda < rows.length; lambda++)
+						   {
+						      var positiveSingleTermsExpanded = ["0", "0"];
+							  var negativeSingleTermsExpanded = ["0", "0"];
+							  var positiveDualTermsExpanded = ["0", "0"];
+							  var negativeDualTermsExpanded = ["0", "0"];
+							  
+						      if (positiveSingleTerms[lambda] != "0") {
+							     positiveSingleTermsExpanded[lambda] = "&part;" + rows[mu] + christoffel[rho][nu][sigma];
+							  }
+							  if (negativeSingleTerms[lambda] != "0") {
+							     negativeSingleTermsExpanded[lambda] = "&part;" + rows[nu] + christoffel[rho][mu][sigma];
+							  }
+							  if (positiveDualTerms[lambda] != "0") {
+							     positiveDualTermsExpanded[lambda] = christoffel[rho][mu][lambda] + christoffel[lambda][nu][sigma];
+							  }
+							  if (negativeDualTerms[lambda] != "0") {
+							     negativeDualTermsExpanded[lambda] = christoffel[rho][nu][lambda] + christoffel[lambda][mu][sigma];
+							  }
+							  
+						      resultsstring += positiveSingleTermsExpanded[lambda] + " - " + negativeSingleTermsExpanded[lambda] + " + " + positiveDualTermsExpanded[lambda] + " - " + negativeDualTermsExpanded[lambda];
+							  if (lambda+1 < rows.length)
+							  {
+							     resultsstring += " + ";
+							  }
+						   }
+                           resultsstring = Cleanup(resultsstring);
+						   resultsdiv.innerHTML += resultsstring;
+						   resultsdiv.innerHTML += "<br>";						   
+						}
+					 }
+				  }
+              }			  
+		  }
+		  
+		  //
+		  // RemoveLikeTerms
+		  //
+		  // Given an array of positive and negative equation terms, eliminate
+		  //   opposite and equal terms by reducing them to zero
+		  function RemoveLikeTerms(count, positive, negative)
+		  {
+		     for (var i = 0; i < count; i++)
+			 {
+			    for (var j = 0; j < count; j++)
+				{
+				   if (positive[i] == negative[j])
+				   {
+				       positive[i] = 0;
+					   negative[j] = 0;
+				   }
+				}
+			 }
+		  }
+
+		  function RemoveLikeProducts(count, positive1, positive2, negative1, negative2)
+		  {
+		     for (var i = 0; i < count; i++)
+			 {
+			    for (var j = 0; j < count; j++)
+				{
+				   if (positive1[i] == negative1[j] || positive2[i] == negative1[j])
+				   {
+				       positive1[i] = 0;
+					   negative1[j] = 0;
+				   }
+				}
+			 }
+		  }
+		  
+		  //
+		  // SubstituteEquivalents
+		  //
+		  // Given a string and a global associative array of things the
+		  //   string may be equivalent to, perform a substitution if possible
+		  //
+		  function SubstituteEquivalents( stringIn )
+		  {
+		     var returnValue = stringIn;
+			 if (!(stringIn in likechristoffels))
+			 {
+			     //alert ("String " + stringIn + " not found in associative array");
+			 }
+			 if ((stringIn in likechristoffels) && (likechristoffels[returnValue] != 0))
+			 {
+ 			    returnValue = likechristoffels[returnValue];
+			 }	
+             return returnValue;			  
+		  }
+		  
+		  
+		  function CheckForSubstitutions()
+		  {
+		     for (var i = 0; i < rows.length; i++)
+			 {
+			    for (var k = 0; k < rows.length; k++)
+				{
+				    for (var l = 0; l < rows.length; l++)
+					{
+					   // if any term is exactly equal in value to another, load the similarity for later use
+					   for (var x = 0; x < rows.length; x++)
+					   {
+					      for (var y = 0; y < rows.length; y++)
+						  {
+						     for (var z = 0; z < rows.length; z++)
+							 {
+								   var namestring1 = "&Gamma;<sup>" + rows[i] + "</sup><sub>" + rows[k] + rows[l] + "</sub>";
+								   var namestring2 = "&Gamma;<sup>" + rows[x] + "</sup><sub>" + rows[y] + rows[z] + "</sub>";							 
+							    // if the newest computed term is an exact match with a previously computed term, load than
+							    if ( !((x == i) && (y == k) && (z == l)) && christoffel[i][k][l] == christoffel[x][y][z])
+								{
+								   //alert ("Adding element to associative array " + namestring1 );
+								   likechristoffels[namestring1] = namestring2;
+								} 
+								else 
+								{
+								  //alert ("Adding element to associative array " + namestring1 + "i= " + i + " k = " + k + " l = " + l + " x = " + x + " y = " + y + " z = " + z + "gammaikl = " + christoffel[i][k][l] + " gammaxyz = " + christoffel[x][y][z] );
+								  //likechristoffels[namestring1] = 0;
+								}
+							 }
+						  }
+					   }
+					}
+                }					   
+			  } 
+		  }
+		  
+		  //
+		  //
+		  //
+		  function Cleanup(stringIn)
+		  {
+		   var returnValue = stringIn;
+		   
+		   returnValue = returnValue.replace(/\+ 0/g, "");
+		   returnValue = returnValue.replace(/- 0/g, "");
+		   returnValue = returnValue.replace(/0 \+/g, "");
+		   returnValue = returnValue.replace(/0 -/g, "");		  
+		   
+		   return returnValue;
+		  }
+	  </script>
+   </head>
+   <body>
+      <input type="button" value="update metric" onClick="onClickUpdateMetric()" />
+	  <input type="button" value="generate equations" onClick="onClickGenerateEquations()" />
+      <div id="inputdiv">
+	  </div>
+      <div id="resultsdiv">
+	  </div>
+   </body>
+</html>
