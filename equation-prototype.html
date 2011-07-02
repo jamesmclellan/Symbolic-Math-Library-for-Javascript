@@ -24,7 +24,7 @@
 	function runStuff() 
 	{
         //var thisTerm = new CTerm(stringToParse);	
-		
+		/*
         DoTest("A+B", ["A", "B"]);
 		DoTest("A-B", ["A", "B"]);
 		
@@ -35,6 +35,7 @@
 		DoTest("(A&dot;(B+C)-D)+E+(F&dot;((G+1)/H))", ["(A&dot;(B+C)-D)", "E", "(F&dot;((G+1)/H))"]);
 		
 		DoTestDiff("&part;A/&part;x", ["A"], ["x"]);
+		*/
 		DoTestDiff("&part;A/&part;x&part;t", ["A"], ["x", "t"]);
 		DoTestDiff("&part;x(0.5&dot;(1/A))", ["(0.5&dot;(1/A))"],["x"]);
 	}
@@ -164,17 +165,16 @@
 						//            (a) if there is, grab the whole term and push it onto the terms array				   
 					    var endOfParen = identifyNestedParen(stringIn, i+7);
 			            // b. push the paren group onto the terms array
-			            var subTerm = stringIn.substring(i+7+1, endOfParen + i+7);
+			            var subTerm = stringIn.substring(i+7, endOfParen+i+7+1);
 			            var tempTerm = new CTerm(subTerm);
 						tempTerm.withRespectTo.push(stringIn.charAt(i+6));
 			            this.terms.push(tempTerm);
-						newStart = i + 7 + endOfParen;
+						newStart = i + 7 + endOfParen + 1;
 						i = newStart;
-					}
-					
-					//      2. look to see if there is a division sybol next
-					if (IsDiv(stringIn, i+7))
+					} 
+					else if (IsDiv(stringIn, i+7))
 					{
+						//      2. look to see if there is a division sybol next
 						//            (b) if there is, look to see if there's a partial differential term next
 						var k = 0;
 						var tempTerm = new CTerm(stringIn.charAt(i+6));							
@@ -182,14 +182,20 @@
 						{
 							//                (i) look for multiple partial differentials; push each one onto the "withRespectTo" array
 							tempTerm.withRespectTo.push(stringIn.charAt(i+8+k+6));
+							//alert("Found partial term '" + stringIn.charAt(i+8+k+6) + "'");
 							k = k+7;
 							newStart = i+8+k;
-							i = newStart;
+							//i = newStart;
+							//alert("Next term '" + stringIn.charAt(i+8+k) + "'");
 						}
+						i = newStart;
 						this.terms.push(tempTerm);
 					}
-					newStart = i+7;
-					i = newStart;
+					else
+					{
+					   newStart = i+7;
+					   i = newStart;
+					}
 				}
 			}
 			
