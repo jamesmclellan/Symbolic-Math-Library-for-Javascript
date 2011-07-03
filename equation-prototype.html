@@ -24,7 +24,7 @@
 	function runStuff() 
 	{
         //var thisTerm = new CTerm(stringToParse);	
-		
+		/*
         DoTest("A+B", ["A", "B"]);
 		DoTest("A-B", ["A", "B"]);
 		
@@ -33,8 +33,9 @@
 		
 		DoTest("(A+B)-C+(D+E)",["(A+B)", "C", "(D+E)"]);
 		DoTest("(A&dot;(B+C)-D)+E+(F&dot;((G+1)/H))", ["(A&dot;(B+C)-D)", "E", "(F&dot;((G+1)/H))"]);
-		
+		*/
 		DoTest("A<sup>B</sup>", ["A", "B"]);
+		DoTest("A<sup>B</sup>-(C&dot;D)/E", ["A", "B", "(C&dot;D)", "E"]);
 		
 		DoTestDiff("&part;A/&part;x", ["A"], ["x"]);
 		DoTestDiff("&part;A/&part;x&part;t", ["A"], ["x", "t"]);
@@ -105,7 +106,8 @@
 	
     function Parse(stringIn)
 	{
-	    var newStart = 0;
+	    var newStart = 0; // the start of the buffer
+		var buffer = ""; // buffer for processed characters; separating this from the input string allows additional manipulation to be performed on the buffer (such as skipping over tags)
 		
 		//alert("I have arrived for string " + stringIn);
 	    for (var i = 0; i < stringIn.length; i++)
@@ -118,14 +120,13 @@
 			   //alert("IsParen");
 			   // a. find the end of this paren group
 			   var endOfParen = identifyNestedParen(stringIn, i);
-			   // b. push the paren group onto the terms array
-			   var subTerm = stringIn.substring(i+1, endOfParen + i);
+			   // b. push the paren group onto the buffer
+			   //    do not push the paren group onto the terms array
+			   buffer += stringIn.substring(i, endOfParen + i);
 			   //alert("Full paren found " + subTerm);
-			   //var tempTerm = new CTerm(subTerm);
-			   //this.terms.push(tempTerm);
 			   // c. skip i to the end of the paren group
 			   i = i + endOfParen;
-			   //newStart = i;
+			   newStart = i;
 			   //alert("End of parent reached. Next character = '" + stringIn.charAt(i) + "'");
 			}
 			
@@ -142,8 +143,10 @@
 			   }
 			   var type = DetermineAddSubType(stringIn, i);
 			   //    ii. set the next term's "relationshipToPreviousTerm" to "addition" or "subtraction"
-			   var subTerm = stringIn.substring(newStart, i );
-			   var tempTerm = new CTerm(subTerm);
+			   //var subTerm = stringIn.substring(newStart, i );
+			   var tempTerm = new CTerm(buffer); // create a new term using the string presently in the buffer
+			   buffer = ""; // clear the buffer
+			   //alert("Clearing buffer in B");	
 			   tempTerm.relationshipToNextTerm = type;
 			   this.terms.push(tempTerm);
 			   //    iii. do not get the next term
@@ -170,6 +173,8 @@
 			            var tempTerm = new CTerm(subTerm);
 						tempTerm.withRespectTo.push(stringIn.charAt(i+6));
 			            this.terms.push(tempTerm);
+						buffer = ""; // clear the buffer
+						//alert("Clearing buffer in C");	
 						newStart = i + 7 + endOfParen + 1;
 						i = newStart;
 					} 
@@ -191,6 +196,8 @@
 						}
 						i = newStart;
 						this.terms.push(tempTerm);
+						buffer = ""; // clear the buffer
+						//alert("Clearing buffer in D");	
 					}
 					else
 					{
@@ -221,18 +228,22 @@
 			   //this.terms.push(tempTerm);
 			   // c. skip i to the end of the paren group
 			   //i = i + endOfExp;			   
-			   var subTerm = stringIn.substring(newStart, i );
-			   var tempTerm = new CTerm(subTerm);
+			   //var subTerm = stringIn.substring(newStart, i );
+			   //alert("Creating term '" + buffer + "'.");
+			   var tempTerm = new CTerm(buffer); // create a new term from the buffer
+			   buffer = ""; // clear the buffer
+			   //alert("Clearing buffer in E");	
 			   tempTerm.relationshipToNextTerm = "exponent";
 			   this.terms.push(tempTerm);			   
-			   newStart = i+6;
-			   i = i+5;
+			   newStart = i+5;
+			   i = i+4;
 			}
 			
 			if (IsExponentEnd(stringIn, i))
 			{
 			  // if this is the closing part of an exponent, advance past it
-
+			  newStart = i+6;
+              i = i+5
 			}
 			
 			// Look for multiplication or division
@@ -248,8 +259,10 @@
 			   }
 			   var type = DetermineMulDivType(stringIn, i);
 			   //    ii. set the next term's "relationshipToPreviousTerm" to "multiplication" or "division"
-			   var subTerm = stringIn.substring(newStart, i );
-			   var tempTerm = new CTerm(subTerm);
+			   //var subTerm = stringIn.substring(newStart, i );
+			   var tempTerm = new CTerm(buffer);
+			   buffer = ""; // clear the buffer
+			   //alert("Clearing buffer in A");	
 			   tempTerm.relationshipToNextTerm = type;
 			   this.terms.push(tempTerm);
 			   //    iii. do not get the next term
@@ -270,12 +283,19 @@
 			{
 			   // do nothing yet
 			}
+			
+			if (i <= stringIn.length && i >= newStart) 
+			{
+			   buffer += stringIn.charAt(i);
+			   //alert("Creating new term '" + buffer + "'");			   
+			}
 		}
 		// at the end of the process, take any trailing data without operators and push as a term
-	    var subTerm = stringIn.substring(newStart, i );
+	    //var subTerm = stringIn.substring(newStart, i );
 		//alert("End of String. Last term start " + newStart + ", end " + i + ". Value = " + subTerm);
-		if (subTerm != "") {
-	       var tempTerm = new CTerm(subTerm);
+		//alert("End of String. Buffer = '" + buffer + "'.");
+		if (buffer.length > 0) {
+	       var tempTerm = new CTerm(buffer);
 	       tempTerm.relationshipToNextTerm = "none";
 	       this.terms.push(tempTerm);
 		}
@@ -366,7 +386,7 @@
 	      (stringIn.charAt(i+1) == "s") &&
 		  (stringIn.charAt(i+2) == "u") &&
 		  (stringIn.charAt(i+3) == "p") &&
-		  (stringIn.charAt(i+3) == ">") )
+		  (stringIn.charAt(i+4) == ">") )
 	   {
 	      return true;
 	   }
