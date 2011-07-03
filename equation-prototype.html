@@ -24,7 +24,7 @@
 	function runStuff() 
 	{
         //var thisTerm = new CTerm(stringToParse);	
-		/*
+		
         DoTest("A+B", ["A", "B"]);
 		DoTest("A-B", ["A", "B"]);
 		
@@ -34,8 +34,9 @@
 		DoTest("(A+B)-C+(D+E)",["(A+B)", "C", "(D+E)"]);
 		DoTest("(A&dot;(B+C)-D)+E+(F&dot;((G+1)/H))", ["(A&dot;(B+C)-D)", "E", "(F&dot;((G+1)/H))"]);
 		
+		DoTest("A<sup>B</sup>", ["A", "B"]);
+		
 		DoTestDiff("&part;A/&part;x", ["A"], ["x"]);
-		*/
 		DoTestDiff("&part;A/&part;x&part;t", ["A"], ["x", "t"]);
 		DoTestDiff("&part;x(0.5&dot;(1/A))", ["(0.5&dot;(1/A))"],["x"]);
 	}
@@ -209,6 +210,29 @@
 			   // c. push the whole exponent onto the terms array
 			   //    i. set the term's "relationshipToPreviousTerm" to "exponent"
 			   // d. skip i to the end of this block
+			   
+			   //alert("IsParen");
+			   // a. find the end of this paren group
+			   //var endOfExp = identifyExpEnd(stringIn, i);
+			   // b. push the paren group onto the terms array
+			   //var subTerm = stringIn.substring(i+1, endOfExp + i);
+			   //alert("Full paren found " + subTerm);
+			   //var tempTerm = new CTerm(subTerm);
+			   //this.terms.push(tempTerm);
+			   // c. skip i to the end of the paren group
+			   //i = i + endOfExp;			   
+			   var subTerm = stringIn.substring(newStart, i );
+			   var tempTerm = new CTerm(subTerm);
+			   tempTerm.relationshipToNextTerm = "exponent";
+			   this.terms.push(tempTerm);			   
+			   newStart = i+6;
+			   i = i+5;
+			}
+			
+			if (IsExponentEnd(stringIn, i))
+			{
+			  // if this is the closing part of an exponent, advance past it
+
 			}
 			
 			// Look for multiplication or division
@@ -351,6 +375,41 @@
 	      return false;
 	   }	
 	}
+	
+	function IsExponentEnd(stringIn, i)
+	{
+	   if ((stringIn.charAt(i) == "<") && 
+	      (stringIn.charAt(i+1) == "/") &&
+		  (stringIn.charAt(i+2) == "s") &&
+		  (stringIn.charAt(i+3) == "u") &&
+		  (stringIn.charAt(i+4) == "p") &&
+		  (stringIn.charAt(i+5) == ">") )
+	   {
+	      return true;
+	   }
+	   else
+	   {
+	      return false;
+	   }	
+	}	
+	
+    function identifyExpEnd(stringIn, i)
+    {
+	   var j = 0; // loop counter
+	   for (j = 0; j < (stringIn.length - i); j++)
+	   {
+	      if ((stringIn.charAt(i) == "<") && 
+		     (stringIn.charAt(i+1) == "/") &&
+	         (stringIn.charAt(i+2) == "s") &&
+		     (stringIn.charAt(i+3) == "u") &&
+		     (stringIn.charAt(i+4) == "p") &&
+		     (stringIn.charAt(i+5) == ">") )
+		  {
+		     break;
+		  }
+	   }
+	   return(j);
+    }		
 	
 	function IsDiff(stringIn, i)
 	{
