@@ -5,13 +5,59 @@
   <div id="resultsdiv"></div>
   <script type="text/javascript">
   
+    //////////////////////////////////////////////////////////////////
+	//
+	// Symbolic Math Library for Javascript
+	//
+	// (c) 2011 James McLellan
+	//  
+	// Permission granted to redistribute for both commercial and non-commercial purposes, provided
+	// copyright information is retained.
+	//
+	//
+  
+  
+    //////////////////////
+    // :TODO:
+	//
+    // 1. Make sure all term types are getting set correctly
+	//    a. Change the unit tests to take CTerm, not string, arguments
+	// 2. Recognize numbers
+	//    a. Use parseFloat(), which will return NaN if no number is found
+	// 3. Recognize (1/A) is equivalent to A^-1
+	//    a. Detect (1/TERM)
+	//    b. Create an "equivalentExpressions" array of 1 item, place the exponential equation as that item
+	// 4. Recognize (1/A^n) is equivalent to A^-n
+	//    a. Detect (1/(TERM<sup>n</sup>))
+	//    b. Create an "equivalentExpressions" array of 1 item, place the exponential equation as that item
+	// 5. Recognize associative property of multiplied terms
+	//    a. Create an "equivalentExpressions" array of N!-items (where N is number of terms), each containing one of the possible combinations
+	//    b. Create a helper function to search through the combinations and find matches
+	// 6. Recognize associative property of added terms
+	//    a. Create an "equivalentExpressions" array of N!-items (where N is number of terms), each containing one of the possible combinations
+	//    b. Create a helper function to search through the combinations and find matches	
+	// 7. Recognize negating terms
+	//    a. Create a function "CanEvaluate" that determines if a function can be further decomposed
+	//    b. Start at the highest level of organization (level 0)
+	//    c. Create a function "Simplify" that will, if possible, simplify the equation one step further
+	//       i. For each term, look for a "subtraction" term
+	//          (0) If there are no "subtraction" terms, anywhere in the term list, we are done
+	//          (1) Look through "equivalentExpressions" to see if this term is the same
+	//          (2) If it is, remove both terms
+	// 8. Perform basic A^n = nA^(n-1) differential
+	//    a. Recognize that there is an A^n equivalent in the "equivalentExpressions" array
+	//    b. Capture the exponent seperate from the root
+	//    c. Push a multiplier ahead of the root
+	//    d. Modify the exponent
+	//       i. If the exponent is a number, just decrement
+	
     var stringToParse = "&part;x(0.5&dot;(1/A)&dot;(&part;A/&part;x)) - &part;x(0.5&dot;(1/A)&dot;(&part;A/&part;x)) + (0.5&dot;(1/A)&dot;(&part;A/&part;x))&dot;(0.5&dot;(1/A)&dot;(&part;A/&part;x)) - (0.5&dot;(1/A)&dot;(&part;A/&part;x))&dot;(0.5&dot;(1/A)&dot;(&part;A/&part;x)) + &part;x&dot;(0.5&dot;(1/A)&dot;(&part;A/&part;x)) - &part;x(0.5&dot;(1/A)&dot;(&part;A/&part;x)) + (0.5&dot;(1/A)&dot;(0-&part;B/&part;t))&dot;(0.5&dot;(1/B)&dot;(&part;B/&part;t)) - (0.5&dot;(1/A)&dot;(0-&part;B/&part;t))&dot;(0.5&dot;(1/B)&dot;(&part;B/&part;t))";
  
     function CTerm(termString)
 	{
 	   //alert("Creating term " + termString);
-	   this.relationToPreviousTerm = "";
-	   this.relationToNextTerm = "";
+	   this.relationshipToPreviousTerm = "";
+	   this.relationshipToNextTerm = "";
 	   this.operation = "";
 	   this.withRespectTo = new Array();
 	   this.terms = new Array();
@@ -21,25 +67,101 @@
 	   //this.Evaluate(termString);
 	}
 	
+    function CTerm(termString, typeString)
+	{
+	   //alert("Creating term " + termString);
+	   this.relationshipToPreviousTerm = "";
+	   this.relationshipToNextTerm = typeString;
+	   this.operation = "";
+	   this.withRespectTo = new Array();
+	   this.terms = new Array();
+	   //this.terms[0] = []; // the 0-row of the terms array is the current (unexpanded) level
+	   this.Evaluate = Parse;
+	   this.unevaluatedString = termString;
+	   //this.Evaluate(termString);
+	}	
+	
+	function Simplify(termInput)
+	{
+	   // This function will loop through all the components of this.terms[] and do the following:
+	   //  . Will create "equivalentExpressions" reflecting the associative properties of multiplied terms
+	   //  . If there are negating terms, (e.g. A - A) will remove them
+	   //  . If there are addable terms, (e.g. A + A), will add them (2A)
+	   
+	   for (var i = 0; i < termInput.terms.length; i++)
+	   {
+	       var activeTerms = []; // the array of terms to be operated on
+		   var simplifiedTerms = []; // the array of results -- final, simplified terms
+		   
+	       // go right to left, per the order of operations:
+		   // 1. handle groups first (actually, do not handle groups at all)
+		   // 2. handle exponents
+		   // 3. handle multiplication/division
+		   //    a. Look for strings of multiply/divide operations
+		   if (termInput.terms[i].relationshipToNextTerm == "multiply" ||
+		       termInput.terms[i].relationshipToNextTerm == "divide")
+		    {
+			   activeTerms.push(termInput.terms[i]);
+			}
+		    // qualify a term if the term comes immediately after a multiple/divide operator
+			else if (i > 0 && 
+			    (termInput.terms[i-1].relationshipToNextTerm == "multiply" ||
+			     termInput.terms[i-1].relationshipToNextTerm == "divide"))
+			{
+			   activeTerms.push(termInput.terms[i]);
+			}
+			// if we've come to the end of a string of multiplication/division operators, then it is time to work on
+			//    the given string/array, then reset for the next possible string
+			else
+			{
+			   // i. Is there a term being divided by itself? simplify to "1"
+			   if (IsDivideInTermArray(activeTerms))
+			   {
+			      //    (1) If there is any term to the right of a "divide" operation, save that term
+			      //    (2) Look at all terms to the left & right of "multiply" operations for a match. 
+			      //           Also look at the term to the left of the "divide" operation for a match.
+			      //    (3) If a match is found, delete both terms <-- HOW??
+			      // ii. Is there a multiply-by-zero anywhere in the term? simplify to "0"
+			   }
+			}
+			
+		   // 4. handle addition/subtraction
+	   }
+	}
+	
+	function IsDivideInTermArray( termInput )
+	{
+	   for (var i = 0; i < termInput.length; i++)
+	   {
+	      if (termInput[i].relationshipToNextTerm == "divide")
+		  {
+		     return true;
+		  }
+	   }
+	   return false;
+	}
+	
 	function runStuff() 
 	{
         //var thisTerm = new CTerm(stringToParse);	
+		
+        DoTest("A+B", [new CTerm("A", "addition"), new CTerm("B", "none")]);
+		DoTest("A-B", [new CTerm("A", "subtraction"), new CTerm("B", "none")]);
+		
+		DoTest("A&dot;B", [new CTerm("A", "multiply"), new CTerm("B", "none")]);
+		DoTest("A/B", [new CTerm("A", "divide"), new CTerm("B", "none")]);
+		
+		DoTest("(A+B)-C+(D+E)",[new CTerm("(A+B)", "subtraction"), new CTerm("C", "addition"), new CTerm("(D+E)", "none")]);
+		DoTest("(A&dot;(B+C)-D)+E+(F&dot;((G+1)/H))", [new CTerm("(A&dot;(B+C)-D)", "addition"), new CTerm("E", "addition"), new CTerm("(F&dot;((G+1)/H))", "none")]);
+		
+		DoTest("A<sup>B</sup>", [new CTerm("A", "exponent"), new CTerm("B", "none")]);
+		DoTest("A<sup>B</sup>-(C&dot;D)/E", [new CTerm("A", "exponent"), new CTerm("B", "subtraction"), new CTerm("(C&dot;D)", "divide"), new CTerm("E", "none")]);
+		
 		/*
-        DoTest("A+B", ["A", "B"]);
-		DoTest("A-B", ["A", "B"]);
-		
-		DoTest("A&dot;B", ["A", "B"]);
-		DoTest("A/B", ["A", "B"]);
-		
-		DoTest("(A+B)-C+(D+E)",["(A+B)", "C", "(D+E)"]);
-		DoTest("(A&dot;(B+C)-D)+E+(F&dot;((G+1)/H))", ["(A&dot;(B+C)-D)", "E", "(F&dot;((G+1)/H))"]);
-		*/
-		DoTest("A<sup>B</sup>", ["A", "B"]);
-		DoTest("A<sup>B</sup>-(C&dot;D)/E", ["A", "B", "(C&dot;D)", "E"]);
-		
 		DoTestDiff("&part;A/&part;x", ["A"], ["x"]);
 		DoTestDiff("&part;A/&part;x&part;t", ["A"], ["x", "t"]);
 		DoTestDiff("&part;x(0.5&dot;(1/A))", ["(0.5&dot;(1/A))"],["x"]);
+		*/
 	}
 	
 	function DoTest(testString, expectedResults)
@@ -68,10 +190,18 @@
 	   }
 	   for (var i = 0; i < expectedResults.length; i++)
 	   {
-	      if (term.terms[i].unevaluatedString != expectedResults[i])
+	      // check term value
+	      if (term.terms[i].unevaluatedString != expectedResults[i].unevaluatedString)
 		  {
-		     alert( "TEST: '" + testname + "' term " + (i) + ". Expected '" + expectedResults[i] + "', observed '" + term.terms[i].unevaluatedString + "'"); 
+		     alert( "TEST Name: '" + testname + "' term " + (i) + ". Expected '" + expectedResults[i].unevaluatedString + "', observed '" + term.terms[i].unevaluatedString + "'"); 
 		  }
+		  // check relationship type
+	      if (term.terms[i].relationshipToNextTerm != expectedResults[i].relationshipToNextTerm)
+		  {
+		     alert( "TEST Type: '" + testname + "' term " + (i) + ". Expected '" + expectedResults[i].relationshipToNextTerm + "', observed '" + term.terms[i].relationshipToNextTerm + "'"); 
+		  }		  
+		  // check partial differentials
+		  // :TODO:
 	   }
 	}
 	
@@ -504,6 +634,6 @@
 	   this.withRespectTo = [];
 	}
   </script>
-  <input type="button" value="Do It" onclick="runStuff()" />
+  <input type="button" value="Simplify Equations" onclick="runStuff()" />
 </body>
 </html>
