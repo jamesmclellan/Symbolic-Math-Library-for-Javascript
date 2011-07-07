@@ -52,10 +52,21 @@
 	//       i. If the exponent is a number, just decrement
 	
     var stringToParse = "&part;x(0.5&dot;(1/A)&dot;(&part;A/&part;x)) - &part;x(0.5&dot;(1/A)&dot;(&part;A/&part;x)) + (0.5&dot;(1/A)&dot;(&part;A/&part;x))&dot;(0.5&dot;(1/A)&dot;(&part;A/&part;x)) - (0.5&dot;(1/A)&dot;(&part;A/&part;x))&dot;(0.5&dot;(1/A)&dot;(&part;A/&part;x)) + &part;x&dot;(0.5&dot;(1/A)&dot;(&part;A/&part;x)) - &part;x(0.5&dot;(1/A)&dot;(&part;A/&part;x)) + (0.5&dot;(1/A)&dot;(0-&part;B/&part;t))&dot;(0.5&dot;(1/B)&dot;(&part;B/&part;t)) - (0.5&dot;(1/A)&dot;(0-&part;B/&part;t))&dot;(0.5&dot;(1/B)&dot;(&part;B/&part;t))";
+	var globalIDCounter = 1;
+	
+	function GenerateNewID(globalIDSource)
+	{
+	   // increment the counter
+	   globalIDSource++;
+	   
+	   // return the value
+	   return globalIDSource;
+	}
  
     function CTerm(termString)
 	{
 	   //alert("Creating term " + termString);
+	   this.id = GenerateNewID(globalIDCounter);
 	   this.relationshipToPreviousTerm = "";
 	   this.relationshipToNextTerm = "";
 	   this.operation = "";
@@ -63,6 +74,7 @@
 	   this.terms = new Array();
 	   //this.terms[0] = []; // the 0-row of the terms array is the current (unexpanded) level
 	   this.Evaluate = Parse;
+	   this.Simplify = SimplifyTerms;
 	   this.unevaluatedString = termString;
 	   //this.Evaluate(termString);
 	}
@@ -70,6 +82,7 @@
     function CTerm(termString, typeString)
 	{
 	   //alert("Creating term " + termString);
+	   this.id = GenerateNewID(globalIDCounter);	   
 	   this.relationshipToPreviousTerm = "";
 	   this.relationshipToNextTerm = typeString;
 	   this.operation = "";
@@ -77,21 +90,24 @@
 	   this.terms = new Array();
 	   //this.terms[0] = []; // the 0-row of the terms array is the current (unexpanded) level
 	   this.Evaluate = Parse;
+	   this.Simplify = SimplifyTerms;
 	   this.unevaluatedString = termString;
 	   //this.Evaluate(termString);
 	}	
 	
-	function Simplify(termInput)
+	function SimplifyTerms(termInput)
 	{
 	   // This function will loop through all the components of this.terms[] and do the following:
 	   //  . Will create "equivalentExpressions" reflecting the associative properties of multiplied terms
 	   //  . If there are negating terms, (e.g. A - A) will remove them
 	   //  . If there are addable terms, (e.g. A + A), will add them (2A)
 	   
+	   //alert ("Simplify called");
+	   var activeTerms = []; // the array of terms to be operated on
+	   var simplifiedTerms = []; // the array of results -- final, simplified terms
+	   
 	   for (var i = 0; i < termInput.terms.length; i++)
 	   {
-	       var activeTerms = []; // the array of terms to be operated on
-		   var simplifiedTerms = []; // the array of results -- final, simplified terms
 		   
 	       // go right to left, per the order of operations:
 		   // 1. handle groups first (actually, do not handle groups at all)
@@ -101,6 +117,7 @@
 		   if (termInput.terms[i].relationshipToNextTerm == "multiply" ||
 		       termInput.terms[i].relationshipToNextTerm == "divide")
 		    {
+			   //alert("Added term " + termInput.terms[i].unevaluatedString + " to active terms");
 			   activeTerms.push(termInput.terms[i]);
 			}
 		    // qualify a term if the term comes immediately after a multiple/divide operator
@@ -108,32 +125,126 @@
 			    (termInput.terms[i-1].relationshipToNextTerm == "multiply" ||
 			     termInput.terms[i-1].relationshipToNextTerm == "divide"))
 			{
+			   //alert("Added term " + termInput.terms[i].unevaluatedString + " to active terms");
 			   activeTerms.push(termInput.terms[i]);
 			}
 			// if we've come to the end of a string of multiplication/division operators, then it is time to work on
 			//    the given string/array, then reset for the next possible string
 			else
-			{
-			   // i. Is there a term being divided by itself? simplify to "1"
-			   if (IsDivideInTermArray(activeTerms))
-			   {
-			      //    (1) If there is any term to the right of a "divide" operation, save that term
-			      //    (2) Look at all terms to the left & right of "multiply" operations for a match. 
-			      //           Also look at the term to the left of the "divide" operation for a match.
-			      //    (3) If a match is found, delete both terms <-- HOW??
-			      // ii. Is there a multiply-by-zero anywhere in the term? simplify to "0"
-			   }
-			}
+			{							  
+               simplifiedTerms.push( SimplifyMultiplicationDivision(activeTerms) );
+			   activeTerms = []; // clear out activeterms array
+			} // end of multiplication-division handling subsection
+			
 			
 		   // 4. handle addition/subtraction
-	   }
+		
+	   } // done with term loop
+	   // if any terms are still unhandled, handle them now
+	   simplifiedTerms = SimplifyMultiplicationDivision(activeTerms);
+	   //alert("Return value = " + simplifiedTerms[0].unevaluatedString );
+	   return simplifiedTerms;
 	}
+	
+	function SimplifyMultiplicationDivision(activeTerms)
+	{
+	   var numeratorTerms = FindNumeratorsInTermArray(activeTerms);
+	   var denominatorTerms = FindDenominatorsInTermArray(activeTerms);			   
+	   var simplifiedTerms = [];
+	   
+	   //alert("Done finding terms. Evaluating.");
+	   
+	   // i. Is there a term being divided by itself? simplify to "1"
+	   if (IsDivideInTermArray(activeTerms))
+	   {
+		  //    (1) If there is any term to the right of a "divide" operation, save that term
+		  //          (done in declaration of "denominatorTerms", above  
+		  //    (2) Look at all terms to the left & right of "multiply" operations for a match. 
+		  //           Also look at the term to the left of the "divide" operation for a match.
+		  //    (3) If a match is found, delete both terms
+		  //        (a) Set each term to "null" (this will be tested for later)
+		  //        (b) Set the numerator
+		  //alert("Found divisor in terms. Attempting to cancel numerators and denominators");
+		  
+		  for (var j = 0; j < denominatorTerms.length; j++)
+		  {
+			 for (var k = 0; k < numeratorTerms.length; k++)
+			 {
+				if (denominatorTerms[j].unevaluatedString == numeratorTerms[k].unevaluatedString)
+				{
+				   // delete from the activeTerms array
+				   DeleteFromArray(activeTerms, denominatorTerms[j].id);
+				   DeleteFromArray(activeTerms, numeratorTerms[k].id);					   
+				   
+				   // delete from the numeratorTerms and denominatorTerms array
+				   DeleteFromArray(denominatorTerms, denominatorTerms[j].id);
+				   DeleteFromArray(numeratorTerms, numeratorTerms[k].id);					   
+				   
+				   // break to next denominator
+				   break;
+				} 
+			 } // end of numerator loop
+		  } // end of denominator loop
+	   } // end if divide terms in array
+	   
+	   // ii. Is there a multiply-by-zero anywhere in the term? simplify to "0"
+	   if (IsZeroInTermArray(numeratorTerms))
+	   {
+		  var zeroTerm = new CTerm("0");
+		 // alert("Found a zero in terms.");
+		  simplifiedTerms.push(zeroTerm);
+	   }
+	   else
+	   {
+		  // if there is not a zero, then push surviving numerators and denominators
+		  for (var j = 0; j < activeTerms.length; j++)
+		  {
+			 if (activeTerms[j] != null)
+			 {
+				simplifiedTerms.push(activeTerms[j]);
+			 }
+		  }
+		  //alert("Result of simplification " + simplifiedTerms.length + " items. ");
+		  // if all terms cancel between numerators and denominators, then push a "1" to the output
+		  if (simplifiedTerms.length == 0)
+		  {
+			simplifiedTerms.push(new CTerm("1"));
+			//alert("Adding unit term to results, value = " + simplifiedTerms[0].unevaluatedString );
+		  }
+	   }	
+	   //alert("Return value = " + simplifiedTerms[0].unevaluatedString );
+	   return(simplifiedTerms);
+	}
+	
+	function DeleteFromArray(termInput, id)
+	{
+	   for (var i = 0; i < termInput.length; i++)
+	   {
+	      if (termInput[i] != null && termInput[i].id == id)
+		  {
+		     termInput[i] = null;
+		  }
+	   }	
+
+	}
+	
+	function IsZeroInTermArray( termInput )
+	{
+	   for (var i = 0; i < termInput.length; i++)
+	   {
+	      if (termInput[i] != null && termInput[i].unevaluatedString == "0")
+		  {
+		     return true;
+		  }
+	   }
+	   return false;
+	}	
 	
 	function IsDivideInTermArray( termInput )
 	{
 	   for (var i = 0; i < termInput.length; i++)
 	   {
-	      if (termInput[i].relationshipToNextTerm == "divide")
+	      if (termInput[i] != null && termInput[i].relationshipToNextTerm == "divide")
 		  {
 		     return true;
 		  }
@@ -141,10 +252,39 @@
 	   return false;
 	}
 	
+	function FindNumeratorsInTermArray( termInput )
+	{
+	   var returnValue = [];
+	   
+	   for (var i = 0; i < (termInput.length); i++)
+	   {
+		  returnValue.push(termInput[i]);		  	   
+	      if (termInput[i].relationshipToNextTerm == "divide")
+		  {
+			 i++; //skip next element (the denominator)
+		  }
+	   }
+	   return returnValue;	
+	}
+	
+	function FindDenominatorsInTermArray( termInput )
+	{
+	   var returnValue = [];
+	   
+	   for (var i = 0; i < (termInput.length - 1); i++)
+	   {
+	      if (termInput[i].relationshipToNextTerm == "divide")
+		  {
+		     returnValue.push(termInput[i+1]);
+		  }
+	   }
+	   return returnValue;
+	}	
+	
 	function runStuff() 
 	{
         //var thisTerm = new CTerm(stringToParse);	
-		
+		/*
         DoTest("A+B", [new CTerm("A", "addition"), new CTerm("B", "none")]);
 		DoTest("A-B", [new CTerm("A", "subtraction"), new CTerm("B", "none")]);
 		
@@ -156,12 +296,33 @@
 		
 		DoTest("A<sup>B</sup>", [new CTerm("A", "exponent"), new CTerm("B", "none")]);
 		DoTest("A<sup>B</sup>-(C&dot;D)/E", [new CTerm("A", "exponent"), new CTerm("B", "subtraction"), new CTerm("(C&dot;D)", "divide"), new CTerm("E", "none")]);
+		*/
+		SimplifyTest(new CTerm("A/A"), [new CTerm("1")]);
+		SimplifyTest(new CTerm("0&dot;B"), [new CTerm("0")]);
+		SimplifyTest(new CTerm("B&dot;A/A"), [new CTerm("B")]);
+		SimplifyTest(new CTerm("1/A"), [new CTerm("1"), new CTerm("A")]);
+		SimplifyTest(new CTerm("C/A"), [new CTerm("C"), new CTerm("A")]);
+		SimplifyTest(new CTerm("A&dot;B/A"), [new CTerm("B")]);
+		SimplifyTest(new CTerm("A&dot;A/A"), [new CTerm("A")]);
 		
 		/*
 		DoTestDiff("&part;A/&part;x", ["A"], ["x"]);
 		DoTestDiff("&part;A/&part;x&part;t", ["A"], ["x", "t"]);
 		DoTestDiff("&part;x(0.5&dot;(1/A))", ["(0.5&dot;(1/A))"],["x"]);
 		*/
+	}
+	
+	function SimplifyTest( termInput, expectedResults )
+	{
+		var testString = termInput.unevaluatedString;	
+	    alert("Running test " + testString );
+		termInput.Evaluate(termInput.unevaluatedString);
+		var resultTerm = new CTerm("");
+		resultTerm.terms = SimplifyTerms(termInput);
+		//resultTerm = termInput.Simplify(termInput);
+		//alert("Simplify returned " + resultTerm.terms.length + " term, value = " + resultTerm.terms[0].unevaluatedString );
+		checkUnitTest(testString, resultTerm, expectedResults);	
+		alert("Completed test " + testString );	
 	}
 	
 	function DoTest(testString, expectedResults)
