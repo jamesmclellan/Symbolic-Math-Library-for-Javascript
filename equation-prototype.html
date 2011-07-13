@@ -110,7 +110,10 @@
 	   //alert ("Simplify called");
 	   var activeTerms = []; // the array of terms to be operated on
 	   var simplifiedTerms = []; // the array of results -- final, simplified terms
+	   var step3Terms = []; // term results of multiplication/division
+	   var step4Terms = []; // term results of addition/subtraction
 	   var finalTerms = [];
+	   var bMultiplyDivideLatch = false;
 	   
 	   //
 	   // :TODO: If an addition/subtraction operation occurs between multiply/division operations, preserve the +/-
@@ -146,39 +149,147 @@
 			}
 			// if we've come to the end of a string of multiplication/division operators, then it is time to work on
 			//    the given string/array, then reset for the next possible string
-			else
-			{							  
+			else if (bMultiplyDivideLatch)
+			{		
+               alert("Called here! Term = " + termInput.terms[i].unevaluatedString);			
                simplifiedTerms = SimplifyMultiplicationDivision(activeTerms);
-			   finalTerms = finalTerms.concat(simplifiedTerms);
-			   activeTerms = []; // clear out activeterms array
+			   // copy the results of the simplification to a new CTerm
+			   var myTerm = new CTerm();
+			   myTerm.terms = simplifiedTerms;
+			   myTerm.relationshipToNextTerm = termInput.terms[i-1].relationshipToNextTerm;			   
+			   step3Terms.push(myTerm);
+			   // copy the results also to the final array
+			   // :NOTE: The "i" index term has not yet been pushed onto the finalTerms array
+			   //        that will happen later
+			   //finalTerms = finalTerms.concat(simplifiedTerms);
+			   // clear out activeterms array
+			   activeTerms = []; 
 			   bMultiplyDivideLatch = false;
 			} // end of multiplication-division handling subsection
 			
+			
 			if (!bMultiplyDivideLatch)
 			{
-			   finalTerms.push(termInput.terms[i]);
+			   step3Terms.push(termInput.terms[i]);
+			   //finalTerms.push(termInput.terms[i]);
 			}
 	   } // done with term loop
 	   
+	   if (activeTerms.length > 0) {	   
+	       //alert("Called here too!");			
+		   var unresolvedTerms = SimplifyMultiplicationDivision(activeTerms);
+		   //alert("Simplify mult/div returned " + unresolvedTerms.length + " terms");
+		   step3Terms = step3Terms.concat(unresolvedTerms);
+	   }
 
 	   // 4. handle addition/subtraction
+       step4Terms = SimplifyAdditionSubtraction(step3Terms);
+	   //alert("Simplify add/sub returned " + step4Terms.length + " terms");
+	   PushToFinal(finalTerms, step4Terms);
+	   if (finalTerms.length > 0)
+	   {
+	      finalTerms[finalTerms.length - 1].relationshipToNextTerm = "none";
+	   }
+	   //finalTerms.concat(step4Terms)
+	  
+	   // if any terms are still unhandled, handle them now
+	   //step3Terms = SimplifyMultiplicationDivision(activeTerms);
+	   //step4Terms = SimplifyAdditionSubtraction(step3Terms);
+	   //PushToFinal(finalTerms, step4Terms);
+	   //finalTerms = finalTerms.concat(step4Terms);
+	   //alert("Return value = " + simplifiedTerms[0].unevaluatedString );
+	   return finalTerms;
+	}
+	
+	function PushToFinal(finalTerms, step4Terms)
+	{
+	   for (var i = 0; i < step4Terms.length; i++)
+	   {
+	     if (step4Terms[i].terms.length > 0)
+		 {
+			 for (var j = 0; j < step4Terms[i].terms.length; j++)
+			 {
+			   //alert("Pushing to final sub-term " + step4Terms[i].terms[j].unevaluatedString);
+			   finalTerms.push(step4Terms[i].terms[j]);
+			 }
+		 } 
+		 else 
+		 {
+		    //alert("Pushing to final term " + step4Terms[i].unevaluatedString);
+		    finalTerms.push(step4Terms[i]);
+		 }
+	   }	
+	}
+	
+	function SimplifyAdditionSubtraction(step3Terms)
+	{
+	   //   :NOTE: Terms in the array may be complex (have multiple terms within them
 	   //   0. create an array of grouped terms, where all terms within a multiply/divide group are single entries
 	   //   a. create an array of equivalent terms using the associative property of multiplied items
 	   //   b. if a subtraction term exists
-/*
-	   if (IsSubtractionInTermArray(finalTerms))   
+	  var subtractionTerms = FindSubtractionInTermArray(step3Terms);
+	  var additionTerms = FindAdditionInTermArray(step3Terms);	   
+	  var simplifiedTerms = [];
+	  
+	   if (IsSubtractionInTermArray(step3Terms))   
 	   {
-		  var subtractionTerms = FindSubtractionInTermArray(finalTerms);
-		  //   c. see if that subtraction term matches a positive term (or equivalent)
-		  //   d. zero out both terms	   			  
-	   }
-*/
-	   
-	   // if any terms are still unhandled, handle them now
-	   simplifiedTerms = SimplifyMultiplicationDivision(activeTerms);
-	   finalTerms = finalTerms.concat(simplifiedTerms);
-	   //alert("Return value = " + simplifiedTerms[0].unevaluatedString );
-	   return finalTerms;
+			  //   c. see if that subtraction term matches a positive term (or equivalent)
+			  for (var j = 0; j < subtractionTerms.length; j++)
+			  {
+				for (var k = 0; k < additionTerms.length; k++)
+				{
+				    if (additionTerms[k] != null)
+					{
+						if (subtractionTerms[j].unevaluatedString == additionTerms[k].unevaluatedString)
+						{			
+						   // delete from the step3Terms array
+						   DeleteFromArray(step3Terms, subtractionTerms[j].id);
+						   DeleteFromArray(step3Terms, additionTerms[k].id);					   
+						   
+						   // delete from the numeratorTerms and subtractionTerms array
+						   DeleteFromArray(subtractionTerms, subtractionTerms[j].id);
+						   DeleteFromArray(additionTerms, additionTerms[k].id);					   
+						   
+						   // break to next denominator
+						   break;			
+						}
+					}
+				}
+			  }
+			  //   d. zero out both terms	   			  
+		}
+		  
+  	    // put addition term array	  
+	    for (var j = 0; j < additionTerms.length; j++)
+	    {
+		    if (additionTerms[j] != null)
+		    {
+			   //alert("Pushing add term " + additionTerms[j].unevaluatedString);
+  			   //additionTerms[j].relationshipToNextTerm = "addition";
+			   simplifiedTerms.push(additionTerms[j]);
+		    }
+	    }	   
+	    // put subtraction term array
+	    for (var j = 0; j < subtractionTerms.length; j++)
+	    {
+		    if (subtractionTerms[j] != null)
+		    {
+			   //alert("Pushing sub term " + subtractionTerms[j].unevaluatedString);
+			   //subtractionTerms[j].relationshipToNextTerm = "subtraction";
+   			   simplifiedTerms.push(subtractionTerms[j]);
+		    }
+	    }	   	  
+	  
+	    // if all terms cancel between numerators and denominators, then push a "1" to the output
+	    if (simplifiedTerms.length == 0)
+	    {
+		   simplifiedTerms.push(new CTerm("0", "none"));
+		   //alert("Adding zero term to results, value = " + simplifiedTerms[0].unevaluatedString );
+	    }	  	
+		// if, after all simplification is done, there is only a single term left, clear it's relationship to any other term
+		// :NOTE: This might be a bad idea... don't I want to keep a +/- sign on the result??
+	  
+	    return simplifiedTerms;
 	}
 	
 	function SimplifyMultiplicationDivision(activeTerms)
@@ -337,16 +448,30 @@
 	{
 	   var returnValue = [];
 	   
+	   for (var i = 0; i < (termInput.length - 1); i++)
+	   {
+	      if (termInput[i].relationshipToNextTerm == "subtraction")
+		  {
+		     returnValue.push(termInput[i+1]);
+		  }
+	   }
+	   return returnValue;
+	}
+	
+	function FindAdditionInTermArray( termInput )
+	{
+	   var returnValue = [];
+	   
 	   for (var i = 0; i < (termInput.length); i++)
 	   {
 		  returnValue.push(termInput[i]);		  	   
 	      if (termInput[i].relationshipToNextTerm == "subtraction")
 		  {
-			 i++; //skip next element (the denominator)
+			 i++; //skip next element (the subtraction term)
 		  }
 	   }
 	   return returnValue;	
-	}
+	}	
 	
 	function IsDivideInTermArray( termInput )
 	{
@@ -405,6 +530,7 @@
 		DoTest("A<sup>B</sup>", [new CTerm("A", "exponent"), new CTerm("B", "none")]);
 		DoTest("A<sup>B</sup>-(C&dot;D)/E", [new CTerm("A", "exponent"), new CTerm("B", "subtraction"), new CTerm("(C&dot;D)", "divide"), new CTerm("E", "none")]);
 		*/
+		/*
 		SimplifyTest(new CTerm("A/A"), [new CTerm("1", "none")]);
 		SimplifyTest(new CTerm("B/C&dot;C/B"), [new CTerm("1", "none")]);				
 		SimplifyTest(new CTerm("0&dot;B"), [new CTerm("0", "none")]);
@@ -415,6 +541,13 @@
 		SimplifyTest(new CTerm("1/A"), [new CTerm("1", "divide"), new CTerm("A", "none")]);
 		SimplifyTest(new CTerm("C/A"), [new CTerm("C", "divide"), new CTerm("A", "none")]);
 		SimplifyTest(new CTerm("A&dot;B/C&dot;C/B"), [new CTerm("A", "none")]);
+		*/
+		
+		SimplifyTest(new CTerm("A-A"), [new CTerm("0", "none")]);
+		SimplifyTest(new CTerm("A+B-A-B"), [new CTerm("0", "none")]);		
+		SimplifyTest(new CTerm("A+B-A"), [new CTerm("B", "addition")]);
+		SimplifyTest(new CTerm("A+B+C-B-A"), [new CTerm("C", "addition")]);
+		SimplifyTest(new CTerm("A+B-C-B-A"), [new CTerm("C", "subtraction")]);
 		
 		/*
 		DoTestDiff("&part;A/&part;x", ["A"], ["x"]);
