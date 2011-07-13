@@ -56,11 +56,16 @@
 	
 	function GenerateNewID(globalIDSource)
 	{
+	   // :TODO: Passing in globalIDSource does not actually increment the global variable referenced.
+	   //        Using global variable directly as a work-around, but should implement
+	   //        a different fix later.
+	   
 	   // increment the counter
-	   globalIDSource++;
+	   globalIDCounter++;
+	   //alert("GlobID now equals " + globalIDCounter);
 	   
 	   // return the value
-	   return globalIDSource;
+	   return globalIDCounter;
 	}
  
     function CTerm(termString)
@@ -105,6 +110,11 @@
 	   //alert ("Simplify called");
 	   var activeTerms = []; // the array of terms to be operated on
 	   var simplifiedTerms = []; // the array of results -- final, simplified terms
+	   var finalTerms = [];
+	   
+	   //
+	   // :TODO: If an addition/subtraction operation occurs between multiply/division operations, preserve the +/-
+	   //
 	   
 	   for (var i = 0; i < termInput.terms.length; i++)
 	   {
@@ -113,12 +123,18 @@
 		   // 1. handle groups first (actually, do not handle groups at all)
 		   // 2. handle exponents
 		   // 3. handle multiplication/division
+		   //    0. set a latch for copying terms into the results array for this stage.
+		   //       i. Initially, if the latch is low, copy each term to the results array.
+		   //       ii. However, if a multiply/divide operation is encountered, set the latch high.
+		   //       iii. While the latch is high, copy terms into the array which will be simplified.
+		   //       iv. When the last term is found, set the latch back low, perform the simplification, and copy the results to the results array
 		   //    a. Look for strings of multiply/divide operations
 		   if (termInput.terms[i].relationshipToNextTerm == "multiply" ||
 		       termInput.terms[i].relationshipToNextTerm == "divide")
 		    {
 			   //alert("Added term " + termInput.terms[i].unevaluatedString + " to active terms");
 			   activeTerms.push(termInput.terms[i]);
+			   bMultiplyDivideLatch = true;
 			}
 		    // qualify a term if the term comes immediately after a multiple/divide operator
 			else if (i > 0 && 
@@ -132,18 +148,37 @@
 			//    the given string/array, then reset for the next possible string
 			else
 			{							  
-               simplifiedTerms.push( SimplifyMultiplicationDivision(activeTerms) );
+               simplifiedTerms = SimplifyMultiplicationDivision(activeTerms);
+			   finalTerms = finalTerms.concat(simplifiedTerms);
 			   activeTerms = []; // clear out activeterms array
+			   bMultiplyDivideLatch = false;
 			} // end of multiplication-division handling subsection
 			
-			
-		   // 4. handle addition/subtraction
-		
+			if (!bMultiplyDivideLatch)
+			{
+			   finalTerms.push(termInput.terms[i]);
+			}
 	   } // done with term loop
+	   
+
+	   // 4. handle addition/subtraction
+	   //   0. create an array of grouped terms, where all terms within a multiply/divide group are single entries
+	   //   a. create an array of equivalent terms using the associative property of multiplied items
+	   //   b. if a subtraction term exists
+/*
+	   if (IsSubtractionInTermArray(finalTerms))   
+	   {
+		  var subtractionTerms = FindSubtractionInTermArray(finalTerms);
+		  //   c. see if that subtraction term matches a positive term (or equivalent)
+		  //   d. zero out both terms	   			  
+	   }
+*/
+	   
 	   // if any terms are still unhandled, handle them now
 	   simplifiedTerms = SimplifyMultiplicationDivision(activeTerms);
+	   finalTerms = finalTerms.concat(simplifiedTerms);
 	   //alert("Return value = " + simplifiedTerms[0].unevaluatedString );
-	   return simplifiedTerms;
+	   return finalTerms;
 	}
 	
 	function SimplifyMultiplicationDivision(activeTerms)
@@ -172,6 +207,8 @@
 			 {
 				if (denominatorTerms[j].unevaluatedString == numeratorTerms[k].unevaluatedString)
 				{
+				   //alert("Deleting term '" + denominatorTerms[j].unevaluatedString + "' from denominator term array. ID = " + denominatorTerms[j].id);
+				   //alert("Deleting term '" + numeratorTerms[k].unevaluatedString + "' from numerator term array. ID = " + numeratorTerms[k].id);
 				   // delete from the activeTerms array
 				   DeleteFromArray(activeTerms, denominatorTerms[j].id);
 				   DeleteFromArray(activeTerms, numeratorTerms[k].id);					   
@@ -190,25 +227,56 @@
 	   // ii. Is there a multiply-by-zero anywhere in the term? simplify to "0"
 	   if (IsZeroInTermArray(numeratorTerms))
 	   {
-		  var zeroTerm = new CTerm("0");
+		  var zeroTerm = new CTerm("0", "none");
 		 // alert("Found a zero in terms.");
 		  simplifiedTerms.push(zeroTerm);
 	   }
 	   else
 	   {
+	      //alert("Collecting remaining activeTerms. Length = " + activeTerms.length );
+		  
 		  // if there is not a zero, then push surviving numerators and denominators
-		  for (var j = 0; j < activeTerms.length; j++)
+		  for (var j = 0; j < numeratorTerms.length; j++)
 		  {
-			 if (activeTerms[j] != null)
+			 if (numeratorTerms[j] != null)
 			 {
-				simplifiedTerms.push(activeTerms[j]);
+			    //alert("Pushing term " + numeratorTerms[j].unevaluatedString);
+				numeratorTerms[j].relationshipToNextTerm = "multiply";
+				simplifiedTerms.push(numeratorTerms[j]);
 			 }
 		  }
+		  var lastTerm = (simplifiedTerms.length) - 1;
+		  
+		  if (lastTerm >= 0)
+		  {
+			  if (CountArrayNotNull(denominatorTerms) > 0)
+			  {
+				 simplifiedTerms[lastTerm].relationshipToNextTerm = "divide";
+			  }
+			  else
+			  {
+				 simplifiedTerms[lastTerm].relationshipToNextTerm = "none";
+			  }
+		  }
+		  
+		  //
+		  // :TODO: Present structure only handles a single denominator. Figure out a way to allow multiple denominators.
+		  //
+		  
+		  for (var j = 0; j < denominatorTerms.length; j++)
+		  {
+			 if (denominatorTerms[j] != null)
+			 {
+			    //alert("Pushing term " + denominatorTerms[j].unevaluatedString);
+				denominatorTerms[j].relationshipToNextTerm = "none";
+				simplifiedTerms.push(denominatorTerms[j]);
+			 }
+		  }		  
 		  //alert("Result of simplification " + simplifiedTerms.length + " items. ");
 		  // if all terms cancel between numerators and denominators, then push a "1" to the output
 		  if (simplifiedTerms.length == 0)
 		  {
-			simplifiedTerms.push(new CTerm("1"));
+			simplifiedTerms.push(new CTerm("1", "none"));
 			//alert("Adding unit term to results, value = " + simplifiedTerms[0].unevaluatedString );
 		  }
 	   }	
@@ -228,6 +296,19 @@
 
 	}
 	
+	function CountArrayNotNull(arrayIn)
+	{
+	  var returnValue = 0;
+	  for (var i = 0; i < arrayIn.length; i++)
+	  {
+	    if (arrayIn[i] != null)
+		{
+		  returnValue++;
+		}
+	  }
+	  return returnValue;
+	}
+	
 	function IsZeroInTermArray( termInput )
 	{
 	   for (var i = 0; i < termInput.length; i++)
@@ -239,6 +320,33 @@
 	   }
 	   return false;
 	}	
+
+	function IsSubtractionInTermArray( termInput )
+	{
+	   for (var i = 0; i < termInput.length; i++)
+	   {
+	      if (termInput[i] != null && termInput[i].relationshipToNextTerm == "subtraction")
+		  {
+		     return true;
+		  }
+	   }
+	   return false;
+	}
+	
+	function FindSubtractionInTermArray( termInput )
+	{
+	   var returnValue = [];
+	   
+	   for (var i = 0; i < (termInput.length); i++)
+	   {
+		  returnValue.push(termInput[i]);		  	   
+	      if (termInput[i].relationshipToNextTerm == "subtraction")
+		  {
+			 i++; //skip next element (the denominator)
+		  }
+	   }
+	   return returnValue;	
+	}
 	
 	function IsDivideInTermArray( termInput )
 	{
@@ -297,13 +405,16 @@
 		DoTest("A<sup>B</sup>", [new CTerm("A", "exponent"), new CTerm("B", "none")]);
 		DoTest("A<sup>B</sup>-(C&dot;D)/E", [new CTerm("A", "exponent"), new CTerm("B", "subtraction"), new CTerm("(C&dot;D)", "divide"), new CTerm("E", "none")]);
 		*/
-		SimplifyTest(new CTerm("A/A"), [new CTerm("1")]);
-		SimplifyTest(new CTerm("0&dot;B"), [new CTerm("0")]);
-		SimplifyTest(new CTerm("B&dot;A/A"), [new CTerm("B")]);
-		SimplifyTest(new CTerm("1/A"), [new CTerm("1"), new CTerm("A")]);
-		SimplifyTest(new CTerm("C/A"), [new CTerm("C"), new CTerm("A")]);
-		SimplifyTest(new CTerm("A&dot;B/A"), [new CTerm("B")]);
-		SimplifyTest(new CTerm("A&dot;A/A"), [new CTerm("A")]);
+		SimplifyTest(new CTerm("A/A"), [new CTerm("1", "none")]);
+		SimplifyTest(new CTerm("B/C&dot;C/B"), [new CTerm("1", "none")]);				
+		SimplifyTest(new CTerm("0&dot;B"), [new CTerm("0", "none")]);
+		SimplifyTest(new CTerm("A&dot;B/C&dot;0/B"), [new CTerm("0", "none")]);		
+		SimplifyTest(new CTerm("B&dot;A/A"), [new CTerm("B", "none")]);
+		SimplifyTest(new CTerm("A&dot;B/A"), [new CTerm("B", "none")]);		
+		SimplifyTest(new CTerm("A&dot;A/A"), [new CTerm("A", "none")]);	
+		SimplifyTest(new CTerm("1/A"), [new CTerm("1", "divide"), new CTerm("A", "none")]);
+		SimplifyTest(new CTerm("C/A"), [new CTerm("C", "divide"), new CTerm("A", "none")]);
+		SimplifyTest(new CTerm("A&dot;B/C&dot;C/B"), [new CTerm("A", "none")]);
 		
 		/*
 		DoTestDiff("&part;A/&part;x", ["A"], ["x"]);
