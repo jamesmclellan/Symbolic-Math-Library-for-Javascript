@@ -64,7 +64,7 @@
 	{
         //var thisTerm = new CTerm(stringToParse);	
 		
-		/*
+		
 		DoTest("A", [new CTerm("A", "none")]);
 		DoTest("-A", [new CTerm("A", "none")]);
 		
@@ -83,15 +83,15 @@
 		DoTest("A<sup>-B</sup>", [new CTerm("A", "exponent"), new CTerm("B", "none")]);
 		DoTest("A<sup>B</sup>-(C&dot;D)/E", [new CTerm("A", "exponent"), new CTerm("B", "subtraction"), new CTerm("(C&dot;D)", "divide"), new CTerm("E", "none")]);
 		DoTest("A<sup>-B</sup>-(C&dot;D)/E", [new CTerm("A", "exponent"), new CTerm("B", "subtraction"), new CTerm("(C&dot;D)", "divide"), new CTerm("E", "none")]);
-		*/
 		
-		/*
+		
+		
 		DoTestDiff("&part;A/&part;x", ["A"], ["x"]);
 		DoTestDiff("&part;A/&part;x&part;t", ["A"], ["x", "t"]);
 		DoTestDiff("&part;x(0.5&dot;(1/A))", ["(0.5&dot;(1/A))"],["x"]);
-		*/
 		
-		/*
+		
+		
 		SimplifyTest(new CTerm("A/A"), [new CTerm("1", "none")]);
 		SimplifyTest(new CTerm("B/C&dot;C/B"), [new CTerm("1", "none")]);				
 		SimplifyTest(new CTerm("0&dot;B"), [new CTerm("0", "none")]);
@@ -109,7 +109,7 @@
 		SimplifyTest(new CTerm("A+B-A"), [new CTerm("B", "none")]);
 		SimplifyTest(new CTerm("A+B+C-B-A"), [new CTerm("C", "none")]);
 		SimplifyTest(new CTerm("A+B-C-B-A"), [new CTerm("C", "none")]);
-		*/
+		
 		
 		SimplifyTest(new CTerm("A&dot;B-A&dot;B"), [new CTerm("0", "none")]);
 		SimplifyTest(new CTerm("-A&dot;B+A&dot;B"), [new CTerm("0", "none")]);
@@ -135,8 +135,12 @@
 		
 		// :NEXT:
 		//  . Equivalent expressions
+		//     . Rather than create a bunche of equivalents, I could enforce order by re-arranging the expression in some sort of fixed order
 		//  . Exponents
+		//     . Make sure having them in a term does not interfere with simplify functions
+		//     . See if exponents can be a part of simplify functions (i.e. A^3/A = A^2)
 		//  . Partial differentials
+		//    . Make sure having them in a term does not interfere with simplify functions
 		//  . Simplifying partial differentials
 		
 		// :TODO: Need to modify unit test to check for the sign on the resulting numbers
@@ -148,36 +152,36 @@
 	function SimplifyTest( termInput, expectedResults )
 	{
 		var testString = termInput.unevaluatedString;	
-	    alert("Running test " + testString );
+	    //alert("Running test " + testString );
 		termInput.Evaluate(termInput.unevaluatedString);
 		var resultTerm = new CTerm("");
 		resultTerm.terms = SimplifyTerms(termInput);
 		//resultTerm = termInput.Simplify(termInput);
 		//alert("Simplify returned " + resultTerm.terms.length + " term, value = " + resultTerm.terms[0].unevaluatedString );
 		checkUnitTest(testString, resultTerm, expectedResults);	
-		alert("Completed test " + testString );	
+		//alert("Completed test " + testString );	
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////
 	
 	function DoTest(testString, expectedResults)
 	{
-	    alert("Running test " + testString );
+	    //alert("Running test " + testString );
 		var thisTerm = new CTerm(testString);
 		thisTerm.Evaluate(testString);
 		checkUnitTest(testString, thisTerm, expectedResults);	
-		alert("Completed test " + testString );
+		//alert("Completed test " + testString );
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////
 	
     function DoTestDiff(testString, expectedResults, expectedDiffs)
 	{
-	    alert("Running test " + testString );
+	    //alert("Running test " + testString );
 		var thisTerm = new CTerm(testString);
 		thisTerm.Evaluate(testString);
 		checkUnitTestDiff(testString, thisTerm, 0, expectedResults, expectedDiffs);	
-		alert("Completed test " + testString );
+		//alert("Completed test " + testString );
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////

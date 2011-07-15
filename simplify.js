@@ -136,7 +136,10 @@
 		    if (additionTerms[j] != null)
 		    {
 			   //alert("Pushing add term " + additionTerms[j].unevaluatedString);
-  			   //additionTerms[j].relationshipToNextTerm = "addition";
+			   if (j > 0)
+			   {
+  			     additionTerms[j-1].relationshipToNextTerm = "addition";
+			   }
 			   simplifiedTerms.push(additionTerms[j]);
 		    }
 	    }	   
@@ -146,7 +149,10 @@
 		    if (subtractionTerms[j] != null)
 		    {
 			   //alert("Pushing sub term " + subtractionTerms[j].unevaluatedString);
-			   //subtractionTerms[j].relationshipToNextTerm = "subtraction";
+			   if (j > 0)
+			   {
+			     subtractionTerms[j-1].relationshipToNextTerm = "subtraction";
+			   }
    			   simplifiedTerms.push(subtractionTerms[j]);
 		    }
 	    }	   	  
@@ -310,6 +316,13 @@
 			 {
 				if (denominatorTerms[j].unevaluatedString == numeratorTerms[k].unevaluatedString)
 				{
+				   // preserve the sign of the pair to be deleted -- if it is negative, then push a "-1" onto the numerators stack
+				   if (denominatorTerms[j].isNegative != numeratorTerms[k].isNegative)
+				   {
+				      var myTerm = new CTerm("1", "none", true);
+					  numeratorTerms.push(myTerm);
+					  activeTerms.push(myTerm);
+				   }
 				   //alert("Deleting term '" + denominatorTerms[j].unevaluatedString + "' from denominator term array. ID = " + denominatorTerms[j].id);
 				   //alert("Deleting term '" + numeratorTerms[k].unevaluatedString + "' from numerator term array. ID = " + numeratorTerms[k].id);
 				   // delete from the activeTerms array
