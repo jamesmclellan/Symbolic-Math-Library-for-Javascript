@@ -3,6 +3,10 @@
 </head>
 <body>
   <div id="resultsdiv"></div>
+  <script type="text/javascript" src="cterm.js"></script> 
+  <script type="text/javascript" src="parser.js"></script>
+  <script type="text/javascript" src="simplify.js"></script>
+  
   <script type="text/javascript">
   
     //////////////////////////////////////////////////////////////////
@@ -52,485 +56,33 @@
 	//       i. If the exponent is a number, just decrement
 	
     var stringToParse = "&part;x(0.5&dot;(1/A)&dot;(&part;A/&part;x)) - &part;x(0.5&dot;(1/A)&dot;(&part;A/&part;x)) + (0.5&dot;(1/A)&dot;(&part;A/&part;x))&dot;(0.5&dot;(1/A)&dot;(&part;A/&part;x)) - (0.5&dot;(1/A)&dot;(&part;A/&part;x))&dot;(0.5&dot;(1/A)&dot;(&part;A/&part;x)) + &part;x&dot;(0.5&dot;(1/A)&dot;(&part;A/&part;x)) - &part;x(0.5&dot;(1/A)&dot;(&part;A/&part;x)) + (0.5&dot;(1/A)&dot;(0-&part;B/&part;t))&dot;(0.5&dot;(1/B)&dot;(&part;B/&part;t)) - (0.5&dot;(1/A)&dot;(0-&part;B/&part;t))&dot;(0.5&dot;(1/B)&dot;(&part;B/&part;t))";
-	var globalIDCounter = 1;
 	
-	function GenerateNewID(globalIDSource)
-	{
-	   // :TODO: Passing in globalIDSource does not actually increment the global variable referenced.
-	   //        Using global variable directly as a work-around, but should implement
-	   //        a different fix later.
-	   
-	   // increment the counter
-	   globalIDCounter++;
-	   //alert("GlobID now equals " + globalIDCounter);
-	   
-	   // return the value
-	   return globalIDCounter;
-	}
- 
-    function CTerm(termString)
-	{
-	   //alert("Creating term " + termString);
-	   this.id = GenerateNewID(globalIDCounter);
-	   this.relationshipToPreviousTerm = "";
-	   this.relationshipToNextTerm = "";
-	   this.operation = "";
-	   this.withRespectTo = new Array();
-	   this.terms = new Array();
-	   //this.terms[0] = []; // the 0-row of the terms array is the current (unexpanded) level
-	   this.Evaluate = Parse;
-	   this.Simplify = SimplifyTerms;
-	   this.unevaluatedString = termString;
-	   //this.Evaluate(termString);
-	}
 	
-    function CTerm(termString, typeString)
-	{
-	   //alert("Creating term " + termString);
-	   this.id = GenerateNewID(globalIDCounter);	   
-	   this.relationshipToPreviousTerm = "";
-	   this.relationshipToNextTerm = typeString;
-	   this.operation = "";
-	   this.withRespectTo = new Array();
-	   this.terms = new Array();
-	   //this.terms[0] = []; // the 0-row of the terms array is the current (unexpanded) level
-	   this.Evaluate = Parse;
-	   this.Simplify = SimplifyTerms;
-	   this.unevaluatedString = termString;
-	   //this.Evaluate(termString);
-	}	
-	
-	function SimplifyTerms(termInput)
-	{
-	   // This function will loop through all the components of this.terms[] and do the following:
-	   //  . Will create "equivalentExpressions" reflecting the associative properties of multiplied terms
-	   //  . If there are negating terms, (e.g. A - A) will remove them
-	   //  . If there are addable terms, (e.g. A + A), will add them (2A)
-	   
-	   //alert ("Simplify called");
-	   var activeTerms = []; // the array of terms to be operated on
-	   var simplifiedTerms = []; // the array of results -- final, simplified terms
-	   var step3Terms = []; // term results of multiplication/division
-	   var step4Terms = []; // term results of addition/subtraction
-	   var finalTerms = [];
-	   var bMultiplyDivideLatch = false;
-	   
-	   //
-	   // :TODO: If an addition/subtraction operation occurs between multiply/division operations, preserve the +/-
-	   //
-	   
-	   for (var i = 0; i < termInput.terms.length; i++)
-	   {
-		   
-	       // go right to left, per the order of operations:
-		   // 1. handle groups first (actually, do not handle groups at all)
-		   // 2. handle exponents
-		   // 3. handle multiplication/division
-		   //    0. set a latch for copying terms into the results array for this stage.
-		   //       i. Initially, if the latch is low, copy each term to the results array.
-		   //       ii. However, if a multiply/divide operation is encountered, set the latch high.
-		   //       iii. While the latch is high, copy terms into the array which will be simplified.
-		   //       iv. When the last term is found, set the latch back low, perform the simplification, and copy the results to the results array
-		   //    a. Look for strings of multiply/divide operations
-		   if (termInput.terms[i].relationshipToNextTerm == "multiply" ||
-		       termInput.terms[i].relationshipToNextTerm == "divide")
-		    {
-			   //alert("Added term " + termInput.terms[i].unevaluatedString + " to active terms");
-			   activeTerms.push(termInput.terms[i]);
-			   bMultiplyDivideLatch = true;
-			}
-		    // qualify a term if the term comes immediately after a multiple/divide operator
-			else if (i > 0 && 
-			    (termInput.terms[i-1].relationshipToNextTerm == "multiply" ||
-			     termInput.terms[i-1].relationshipToNextTerm == "divide"))
-			{
-			   //alert("Added term " + termInput.terms[i].unevaluatedString + " to active terms");
-			   activeTerms.push(termInput.terms[i]);
-			}
-			// if we've come to the end of a string of multiplication/division operators, then it is time to work on
-			//    the given string/array, then reset for the next possible string
-			else if (bMultiplyDivideLatch)
-			{		
-               alert("Called here! Term = " + termInput.terms[i].unevaluatedString);			
-               simplifiedTerms = SimplifyMultiplicationDivision(activeTerms);
-			   // copy the results of the simplification to a new CTerm
-			   var myTerm = new CTerm();
-			   myTerm.terms = simplifiedTerms;
-			   myTerm.relationshipToNextTerm = termInput.terms[i-1].relationshipToNextTerm;			   
-			   step3Terms.push(myTerm);
-			   // copy the results also to the final array
-			   // :NOTE: The "i" index term has not yet been pushed onto the finalTerms array
-			   //        that will happen later
-			   //finalTerms = finalTerms.concat(simplifiedTerms);
-			   // clear out activeterms array
-			   activeTerms = []; 
-			   bMultiplyDivideLatch = false;
-			} // end of multiplication-division handling subsection
-			
-			
-			if (!bMultiplyDivideLatch)
-			{
-			   step3Terms.push(termInput.terms[i]);
-			   //finalTerms.push(termInput.terms[i]);
-			}
-	   } // done with term loop
-	   
-	   if (activeTerms.length > 0) {	   
-	       //alert("Called here too!");			
-		   var unresolvedTerms = SimplifyMultiplicationDivision(activeTerms);
-		   //alert("Simplify mult/div returned " + unresolvedTerms.length + " terms");
-		   step3Terms = step3Terms.concat(unresolvedTerms);
-	   }
 
-	   // 4. handle addition/subtraction
-       step4Terms = SimplifyAdditionSubtraction(step3Terms);
-	   //alert("Simplify add/sub returned " + step4Terms.length + " terms");
-	   PushToFinal(finalTerms, step4Terms);
-	   if (finalTerms.length > 0)
-	   {
-	      finalTerms[finalTerms.length - 1].relationshipToNextTerm = "none";
-	   }
-	   //finalTerms.concat(step4Terms)
-	  
-	   // if any terms are still unhandled, handle them now
-	   //step3Terms = SimplifyMultiplicationDivision(activeTerms);
-	   //step4Terms = SimplifyAdditionSubtraction(step3Terms);
-	   //PushToFinal(finalTerms, step4Terms);
-	   //finalTerms = finalTerms.concat(step4Terms);
-	   //alert("Return value = " + simplifiedTerms[0].unevaluatedString );
-	   return finalTerms;
-	}
-	
-	function PushToFinal(finalTerms, step4Terms)
-	{
-	   for (var i = 0; i < step4Terms.length; i++)
-	   {
-	     if (step4Terms[i].terms.length > 0)
-		 {
-			 for (var j = 0; j < step4Terms[i].terms.length; j++)
-			 {
-			   //alert("Pushing to final sub-term " + step4Terms[i].terms[j].unevaluatedString);
-			   finalTerms.push(step4Terms[i].terms[j]);
-			 }
-		 } 
-		 else 
-		 {
-		    //alert("Pushing to final term " + step4Terms[i].unevaluatedString);
-		    finalTerms.push(step4Terms[i]);
-		 }
-	   }	
-	}
-	
-	function SimplifyAdditionSubtraction(step3Terms)
-	{
-	   //   :NOTE: Terms in the array may be complex (have multiple terms within them
-	   //   0. create an array of grouped terms, where all terms within a multiply/divide group are single entries
-	   //   a. create an array of equivalent terms using the associative property of multiplied items
-	   //   b. if a subtraction term exists
-	  var subtractionTerms = FindSubtractionInTermArray(step3Terms);
-	  var additionTerms = FindAdditionInTermArray(step3Terms);	   
-	  var simplifiedTerms = [];
-	  
-	   if (IsSubtractionInTermArray(step3Terms))   
-	   {
-			  //   c. see if that subtraction term matches a positive term (or equivalent)
-			  for (var j = 0; j < subtractionTerms.length; j++)
-			  {
-				for (var k = 0; k < additionTerms.length; k++)
-				{
-				    if (additionTerms[k] != null)
-					{
-						if (subtractionTerms[j].unevaluatedString == additionTerms[k].unevaluatedString)
-						{			
-						   // delete from the step3Terms array
-						   DeleteFromArray(step3Terms, subtractionTerms[j].id);
-						   DeleteFromArray(step3Terms, additionTerms[k].id);					   
-						   
-						   // delete from the numeratorTerms and subtractionTerms array
-						   DeleteFromArray(subtractionTerms, subtractionTerms[j].id);
-						   DeleteFromArray(additionTerms, additionTerms[k].id);					   
-						   
-						   // break to next denominator
-						   break;			
-						}
-					}
-				}
-			  }
-			  //   d. zero out both terms	   			  
-		}
-		  
-  	    // put addition term array	  
-	    for (var j = 0; j < additionTerms.length; j++)
-	    {
-		    if (additionTerms[j] != null)
-		    {
-			   //alert("Pushing add term " + additionTerms[j].unevaluatedString);
-  			   //additionTerms[j].relationshipToNextTerm = "addition";
-			   simplifiedTerms.push(additionTerms[j]);
-		    }
-	    }	   
-	    // put subtraction term array
-	    for (var j = 0; j < subtractionTerms.length; j++)
-	    {
-		    if (subtractionTerms[j] != null)
-		    {
-			   //alert("Pushing sub term " + subtractionTerms[j].unevaluatedString);
-			   //subtractionTerms[j].relationshipToNextTerm = "subtraction";
-   			   simplifiedTerms.push(subtractionTerms[j]);
-		    }
-	    }	   	  
-	  
-	    // if all terms cancel between numerators and denominators, then push a "1" to the output
-	    if (simplifiedTerms.length == 0)
-	    {
-		   simplifiedTerms.push(new CTerm("0", "none"));
-		   //alert("Adding zero term to results, value = " + simplifiedTerms[0].unevaluatedString );
-	    }	  	
-		// if, after all simplification is done, there is only a single term left, clear it's relationship to any other term
-		// :NOTE: This might be a bad idea... don't I want to keep a +/- sign on the result??
-	  
-	    return simplifiedTerms;
-	}
-	
-	function SimplifyMultiplicationDivision(activeTerms)
-	{
-	   var numeratorTerms = FindNumeratorsInTermArray(activeTerms);
-	   var denominatorTerms = FindDenominatorsInTermArray(activeTerms);			   
-	   var simplifiedTerms = [];
-	   
-	   //alert("Done finding terms. Evaluating.");
-	   
-	   // i. Is there a term being divided by itself? simplify to "1"
-	   if (IsDivideInTermArray(activeTerms))
-	   {
-		  //    (1) If there is any term to the right of a "divide" operation, save that term
-		  //          (done in declaration of "denominatorTerms", above  
-		  //    (2) Look at all terms to the left & right of "multiply" operations for a match. 
-		  //           Also look at the term to the left of the "divide" operation for a match.
-		  //    (3) If a match is found, delete both terms
-		  //        (a) Set each term to "null" (this will be tested for later)
-		  //        (b) Set the numerator
-		  //alert("Found divisor in terms. Attempting to cancel numerators and denominators");
-		  
-		  for (var j = 0; j < denominatorTerms.length; j++)
-		  {
-			 for (var k = 0; k < numeratorTerms.length; k++)
-			 {
-				if (denominatorTerms[j].unevaluatedString == numeratorTerms[k].unevaluatedString)
-				{
-				   //alert("Deleting term '" + denominatorTerms[j].unevaluatedString + "' from denominator term array. ID = " + denominatorTerms[j].id);
-				   //alert("Deleting term '" + numeratorTerms[k].unevaluatedString + "' from numerator term array. ID = " + numeratorTerms[k].id);
-				   // delete from the activeTerms array
-				   DeleteFromArray(activeTerms, denominatorTerms[j].id);
-				   DeleteFromArray(activeTerms, numeratorTerms[k].id);					   
-				   
-				   // delete from the numeratorTerms and denominatorTerms array
-				   DeleteFromArray(denominatorTerms, denominatorTerms[j].id);
-				   DeleteFromArray(numeratorTerms, numeratorTerms[k].id);					   
-				   
-				   // break to next denominator
-				   break;
-				} 
-			 } // end of numerator loop
-		  } // end of denominator loop
-	   } // end if divide terms in array
-	   
-	   // ii. Is there a multiply-by-zero anywhere in the term? simplify to "0"
-	   if (IsZeroInTermArray(numeratorTerms))
-	   {
-		  var zeroTerm = new CTerm("0", "none");
-		 // alert("Found a zero in terms.");
-		  simplifiedTerms.push(zeroTerm);
-	   }
-	   else
-	   {
-	      //alert("Collecting remaining activeTerms. Length = " + activeTerms.length );
-		  
-		  // if there is not a zero, then push surviving numerators and denominators
-		  for (var j = 0; j < numeratorTerms.length; j++)
-		  {
-			 if (numeratorTerms[j] != null)
-			 {
-			    //alert("Pushing term " + numeratorTerms[j].unevaluatedString);
-				numeratorTerms[j].relationshipToNextTerm = "multiply";
-				simplifiedTerms.push(numeratorTerms[j]);
-			 }
-		  }
-		  var lastTerm = (simplifiedTerms.length) - 1;
-		  
-		  if (lastTerm >= 0)
-		  {
-			  if (CountArrayNotNull(denominatorTerms) > 0)
-			  {
-				 simplifiedTerms[lastTerm].relationshipToNextTerm = "divide";
-			  }
-			  else
-			  {
-				 simplifiedTerms[lastTerm].relationshipToNextTerm = "none";
-			  }
-		  }
-		  
-		  //
-		  // :TODO: Present structure only handles a single denominator. Figure out a way to allow multiple denominators.
-		  //
-		  
-		  for (var j = 0; j < denominatorTerms.length; j++)
-		  {
-			 if (denominatorTerms[j] != null)
-			 {
-			    //alert("Pushing term " + denominatorTerms[j].unevaluatedString);
-				denominatorTerms[j].relationshipToNextTerm = "none";
-				simplifiedTerms.push(denominatorTerms[j]);
-			 }
-		  }		  
-		  //alert("Result of simplification " + simplifiedTerms.length + " items. ");
-		  // if all terms cancel between numerators and denominators, then push a "1" to the output
-		  if (simplifiedTerms.length == 0)
-		  {
-			simplifiedTerms.push(new CTerm("1", "none"));
-			//alert("Adding unit term to results, value = " + simplifiedTerms[0].unevaluatedString );
-		  }
-	   }	
-	   //alert("Return value = " + simplifiedTerms[0].unevaluatedString );
-	   return(simplifiedTerms);
-	}
-	
-	function DeleteFromArray(termInput, id)
-	{
-	   for (var i = 0; i < termInput.length; i++)
-	   {
-	      if (termInput[i] != null && termInput[i].id == id)
-		  {
-		     termInput[i] = null;
-		  }
-	   }	
-
-	}
-	
-	function CountArrayNotNull(arrayIn)
-	{
-	  var returnValue = 0;
-	  for (var i = 0; i < arrayIn.length; i++)
-	  {
-	    if (arrayIn[i] != null)
-		{
-		  returnValue++;
-		}
-	  }
-	  return returnValue;
-	}
-	
-	function IsZeroInTermArray( termInput )
-	{
-	   for (var i = 0; i < termInput.length; i++)
-	   {
-	      if (termInput[i] != null && termInput[i].unevaluatedString == "0")
-		  {
-		     return true;
-		  }
-	   }
-	   return false;
-	}	
-
-	function IsSubtractionInTermArray( termInput )
-	{
-	   for (var i = 0; i < termInput.length; i++)
-	   {
-	      if (termInput[i] != null && termInput[i].relationshipToNextTerm == "subtraction")
-		  {
-		     return true;
-		  }
-	   }
-	   return false;
-	}
-	
-	function FindSubtractionInTermArray( termInput )
-	{
-	   var returnValue = [];
-	   
-	   for (var i = 0; i < (termInput.length - 1); i++)
-	   {
-	      if (termInput[i].relationshipToNextTerm == "subtraction")
-		  {
-		     returnValue.push(termInput[i+1]);
-		  }
-	   }
-	   return returnValue;
-	}
-	
-	function FindAdditionInTermArray( termInput )
-	{
-	   var returnValue = [];
-	   
-	   for (var i = 0; i < (termInput.length); i++)
-	   {
-		  returnValue.push(termInput[i]);		  	   
-	      if (termInput[i].relationshipToNextTerm == "subtraction")
-		  {
-			 i++; //skip next element (the subtraction term)
-		  }
-	   }
-	   return returnValue;	
-	}	
-	
-	function IsDivideInTermArray( termInput )
-	{
-	   for (var i = 0; i < termInput.length; i++)
-	   {
-	      if (termInput[i] != null && termInput[i].relationshipToNextTerm == "divide")
-		  {
-		     return true;
-		  }
-	   }
-	   return false;
-	}
-	
-	function FindNumeratorsInTermArray( termInput )
-	{
-	   var returnValue = [];
-	   
-	   for (var i = 0; i < (termInput.length); i++)
-	   {
-		  returnValue.push(termInput[i]);		  	   
-	      if (termInput[i].relationshipToNextTerm == "divide")
-		  {
-			 i++; //skip next element (the denominator)
-		  }
-	   }
-	   return returnValue;	
-	}
-	
-	function FindDenominatorsInTermArray( termInput )
-	{
-	   var returnValue = [];
-	   
-	   for (var i = 0; i < (termInput.length - 1); i++)
-	   {
-	      if (termInput[i].relationshipToNextTerm == "divide")
-		  {
-		     returnValue.push(termInput[i+1]);
-		  }
-	   }
-	   return returnValue;
-	}	
 	
 	function runStuff() 
 	{
         //var thisTerm = new CTerm(stringToParse);	
-		/*
+		
+		DoTest("A", [new CTerm("A", "none")]);
+		DoTest("-A", [new CTerm("A", "none")]);
+		
         DoTest("A+B", [new CTerm("A", "addition"), new CTerm("B", "none")]);
 		DoTest("A-B", [new CTerm("A", "subtraction"), new CTerm("B", "none")]);
-		
+
 		DoTest("A&dot;B", [new CTerm("A", "multiply"), new CTerm("B", "none")]);
 		DoTest("A/B", [new CTerm("A", "divide"), new CTerm("B", "none")]);
 		
+		DoTest("A&dot;B-A&dot;B", [new CTerm("A", "multiply"), new CTerm("B", "subtraction"), new CTerm("A", "multiply"), new CTerm("B", "none")]);
+
 		DoTest("(A+B)-C+(D+E)",[new CTerm("(A+B)", "subtraction"), new CTerm("C", "addition"), new CTerm("(D+E)", "none")]);
 		DoTest("(A&dot;(B+C)-D)+E+(F&dot;((G+1)/H))", [new CTerm("(A&dot;(B+C)-D)", "addition"), new CTerm("E", "addition"), new CTerm("(F&dot;((G+1)/H))", "none")]);
 		
 		DoTest("A<sup>B</sup>", [new CTerm("A", "exponent"), new CTerm("B", "none")]);
+		DoTest("A<sup>-B</sup>", [new CTerm("A", "exponent"), new CTerm("B", "none")]);
 		DoTest("A<sup>B</sup>-(C&dot;D)/E", [new CTerm("A", "exponent"), new CTerm("B", "subtraction"), new CTerm("(C&dot;D)", "divide"), new CTerm("E", "none")]);
-		*/
-		/*
+		DoTest("A<sup>-B</sup>-(C&dot;D)/E", [new CTerm("A", "exponent"), new CTerm("B", "subtraction"), new CTerm("(C&dot;D)", "divide"), new CTerm("E", "none")]);
+		
 		SimplifyTest(new CTerm("A/A"), [new CTerm("1", "none")]);
 		SimplifyTest(new CTerm("B/C&dot;C/B"), [new CTerm("1", "none")]);				
 		SimplifyTest(new CTerm("0&dot;B"), [new CTerm("0", "none")]);
@@ -541,13 +93,21 @@
 		SimplifyTest(new CTerm("1/A"), [new CTerm("1", "divide"), new CTerm("A", "none")]);
 		SimplifyTest(new CTerm("C/A"), [new CTerm("C", "divide"), new CTerm("A", "none")]);
 		SimplifyTest(new CTerm("A&dot;B/C&dot;C/B"), [new CTerm("A", "none")]);
-		*/
 		
 		SimplifyTest(new CTerm("A-A"), [new CTerm("0", "none")]);
+		SimplifyTest(new CTerm("-A+A"), [new CTerm("0", "none")]);
 		SimplifyTest(new CTerm("A+B-A-B"), [new CTerm("0", "none")]);		
-		SimplifyTest(new CTerm("A+B-A"), [new CTerm("B", "addition")]);
-		SimplifyTest(new CTerm("A+B+C-B-A"), [new CTerm("C", "addition")]);
-		SimplifyTest(new CTerm("A+B-C-B-A"), [new CTerm("C", "subtraction")]);
+		SimplifyTest(new CTerm("A+B-A"), [new CTerm("B", "none")]);
+		SimplifyTest(new CTerm("A+B+C-B-A"), [new CTerm("C", "none")]);
+		SimplifyTest(new CTerm("A+B-C-B-A"), [new CTerm("C", "none")]);
+		
+		
+		SimplifyTest(new CTerm("A&dot;B-A&dot;B"), [new CTerm("0", "none")]);
+		SimplifyTest(new CTerm("-A&dot;B+A&dot;B"), [new CTerm("0", "none")]);
+		SimplifyTest(new CTerm("A/B-A/B"), [new CTerm("0", "none")]);
+		SimplifyTest(new CTerm("-A/B+A/B"), [new CTerm("0", "none")]);		
+		
+		// :TODO: Need to modify unit test to check for the sign on the resulting numbers
 		
 		/*
 		DoTestDiff("&part;A/&part;x", ["A"], ["x"]);
@@ -555,6 +115,8 @@
 		DoTestDiff("&part;x(0.5&dot;(1/A))", ["(0.5&dot;(1/A))"],["x"]);
 		*/
 	}
+	
+	////////////////////////////////////////////////////////////////////////////////////
 	
 	function SimplifyTest( termInput, expectedResults )
 	{
@@ -569,6 +131,8 @@
 		alert("Completed test " + testString );	
 	}
 	
+	////////////////////////////////////////////////////////////////////////////////////
+	
 	function DoTest(testString, expectedResults)
 	{
 	    alert("Running test " + testString );
@@ -578,6 +142,8 @@
 		alert("Completed test " + testString );
 	}
 	
+	////////////////////////////////////////////////////////////////////////////////////
+	
     function DoTestDiff(testString, expectedResults, expectedDiffs)
 	{
 	    alert("Running test " + testString );
@@ -586,6 +152,8 @@
 		checkUnitTestDiff(testString, thisTerm, 0, expectedResults, expectedDiffs);	
 		alert("Completed test " + testString );
 	}
+	
+	////////////////////////////////////////////////////////////////////////////////////
 	
 	function checkUnitTest( testname, term, expectedResults )
 	{
@@ -609,6 +177,8 @@
 		  // :TODO:
 	   }
 	}
+	
+	////////////////////////////////////////////////////////////////////////////////////
 	
 	function checkUnitTestDiff( testname, term, index, expectedResults, expectedDiffs )
 	{
@@ -639,405 +209,11 @@
 	   }
 	}	
 	
-    function Parse(stringIn)
-	{
-	    var newStart = 0; // the start of the buffer
-		var buffer = ""; // buffer for processed characters; separating this from the input string allows additional manipulation to be performed on the buffer (such as skipping over tags)
-		
-		//alert("I have arrived for string " + stringIn);
-	    for (var i = 0; i < stringIn.length; i++)
-		{
-		    //alert("Looking at char " + stringIn.charAt(i));
-			
-		    // Look for paren on this character
-			if (IsParen(stringIn, i))
-			{
-			   //alert("IsParen");
-			   // a. find the end of this paren group
-			   var endOfParen = identifyNestedParen(stringIn, i);
-			   // b. push the paren group onto the buffer
-			   //    do not push the paren group onto the terms array
-			   buffer += stringIn.substring(i, endOfParen + i);
-			   //alert("Full paren found " + subTerm);
-			   // c. skip i to the end of the paren group
-			   i = i + endOfParen;
-			   newStart = i;
-			   //alert("End of parent reached. Next character = '" + stringIn.charAt(i) + "'");
-			}
-			
-			// Look for addition or subtraction
-			if (IsAddSubtract(stringIn, i))
-			{
-			   //alert("IsAddSub");
-			   // a. push the previous term onto the terms arry
-			   //    i. set the previous term's "relationshipToNextTerm" to "addition" or "subtraction"
-			   var lastEntry = 0;
-			   if (this.terms.length != null)
-			   {
-			      lastEntry = this.terms.length;
-			   }
-			   var type = DetermineAddSubType(stringIn, i);
-			   //    ii. set the next term's "relationshipToPreviousTerm" to "addition" or "subtraction"
-			   //var subTerm = stringIn.substring(newStart, i );
-			   var tempTerm = new CTerm(buffer); // create a new term using the string presently in the buffer
-			   buffer = ""; // clear the buffer
-			   //alert("Clearing buffer in B");	
-			   tempTerm.relationshipToNextTerm = type;
-			   this.terms.push(tempTerm);
-			   //    iii. do not get the next term
-			   //    iv. skip i to where the + or - was found
-			   newStart = i + 1;
-			}
-			
-			// Look for a partial differential
-			if (IsDiff(stringIn, i))
-			{
-			    //alert("IsDiff of/wrt " + stringIn.charAt(i+6));
-			    // a. look for the next term
-				//   i. if the next term is a letter, add that letter to the "withRespectTo" array
-				if (IsLetter(stringIn, i+6))
-				{
-				    //alert("Diff argument found");
-					//      1. look to see if there is a paren next
-					if (IsParen(stringIn, i+7))
-					{
-						//            (a) if there is, grab the whole term and push it onto the terms array				   
-					    var endOfParen = identifyNestedParen(stringIn, i+7);
-			            // b. push the paren group onto the terms array
-			            var subTerm = stringIn.substring(i+7, endOfParen+i+7+1);
-			            var tempTerm = new CTerm(subTerm);
-						tempTerm.withRespectTo.push(stringIn.charAt(i+6));
-			            this.terms.push(tempTerm);
-						buffer = ""; // clear the buffer
-						//alert("Clearing buffer in C");	
-						newStart = i + 7 + endOfParen + 1;
-						i = newStart;
-					} 
-					else if (IsDiv(stringIn, i+7))
-					{
-						//      2. look to see if there is a division sybol next
-						//            (b) if there is, look to see if there's a partial differential term next
-						var k = 0;
-						var tempTerm = new CTerm(stringIn.charAt(i+6));							
-						while (IsDiff(stringIn, i+8+k))
-						{
-							//                (i) look for multiple partial differentials; push each one onto the "withRespectTo" array
-							tempTerm.withRespectTo.push(stringIn.charAt(i+8+k+6));
-							//alert("Found partial term '" + stringIn.charAt(i+8+k+6) + "'");
-							k = k+7;
-							newStart = i+8+k;
-							//i = newStart;
-							//alert("Next term '" + stringIn.charAt(i+8+k) + "'");
-						}
-						i = newStart;
-						this.terms.push(tempTerm);
-						buffer = ""; // clear the buffer
-						//alert("Clearing buffer in D");	
-					}
-					else
-					{
-					   newStart = i+7;
-					   i = newStart;
-					}
-				}
-			}
-			
-			// Look for an exponent
-			if (IsExponent(stringIn, i))
-			{
-			   //alert("IsExp");
-			   // a. get the whole exponent
-			   // b. evaluate whatever was immediately to the right of this and push it onto the terms array
-			   //    i. set the term's "relationshipToNextTerm" to "root"
-			   // c. push the whole exponent onto the terms array
-			   //    i. set the term's "relationshipToPreviousTerm" to "exponent"
-			   // d. skip i to the end of this block
-			   
-			   //alert("IsParen");
-			   // a. find the end of this paren group
-			   //var endOfExp = identifyExpEnd(stringIn, i);
-			   // b. push the paren group onto the terms array
-			   //var subTerm = stringIn.substring(i+1, endOfExp + i);
-			   //alert("Full paren found " + subTerm);
-			   //var tempTerm = new CTerm(subTerm);
-			   //this.terms.push(tempTerm);
-			   // c. skip i to the end of the paren group
-			   //i = i + endOfExp;			   
-			   //var subTerm = stringIn.substring(newStart, i );
-			   //alert("Creating term '" + buffer + "'.");
-			   var tempTerm = new CTerm(buffer); // create a new term from the buffer
-			   buffer = ""; // clear the buffer
-			   //alert("Clearing buffer in E");	
-			   tempTerm.relationshipToNextTerm = "exponent";
-			   this.terms.push(tempTerm);			   
-			   newStart = i+5;
-			   i = i+4;
-			}
-			
-			if (IsExponentEnd(stringIn, i))
-			{
-			  // if this is the closing part of an exponent, advance past it
-			  newStart = i+6;
-              i = i+5
-			}
-			
-			// Look for multiplication or division
-			if (IsMultiplicationDivision(stringIn, i))
-			{
-			   //alert("IsMult");
-			   // a. push the previous term onto the terms arry
-			   //    i. set the previous term's "relationshipToNextTerm" to "multiplication" or "division"
-			   var lastEntry = 0;
-			   if (this.terms.length != null)
-			   {
-			      lastEntry = this.terms.length;
-			   }
-			   var type = DetermineMulDivType(stringIn, i);
-			   //    ii. set the next term's "relationshipToPreviousTerm" to "multiplication" or "division"
-			   //var subTerm = stringIn.substring(newStart, i );
-			   var tempTerm = new CTerm(buffer);
-			   buffer = ""; // clear the buffer
-			   //alert("Clearing buffer in A");	
-			   tempTerm.relationshipToNextTerm = type;
-			   this.terms.push(tempTerm);
-			   //    iii. do not get the next term
-			   //    iv. skip i to where the * or / was found
-			   if (type == "multiply") 
-			   {
-			      newStart = i + 5;
-				  i = newStart;
-			   }
-			   else
-			   {
-			      newStart = i + 1;
-			   }
-			}
-			
-			// Look for a trig function
-			if (IsTrigFunction(stringIn, i))
-			{
-			   // do nothing yet
-			}
-			
-			if (i <= stringIn.length && i >= newStart) 
-			{
-			   buffer += stringIn.charAt(i);
-			   //alert("Creating new term '" + buffer + "'");			   
-			}
-		}
-		// at the end of the process, take any trailing data without operators and push as a term
-	    //var subTerm = stringIn.substring(newStart, i );
-		//alert("End of String. Last term start " + newStart + ", end " + i + ". Value = " + subTerm);
-		//alert("End of String. Buffer = '" + buffer + "'.");
-		if (buffer.length > 0) {
-	       var tempTerm = new CTerm(buffer);
-	       tempTerm.relationshipToNextTerm = "none";
-	       this.terms.push(tempTerm);
-		}
-	}
-	
-	function IsLetter(stringIn, i)
-	{
-	   var testChar = stringIn.charAt(i);
-	   if (testChar.match(/[a-zA-Z]/) != null)
-	   {
-	      return true;
-	   } 
-	   else
-	   {
-	      return false;
-	   }
-	}
-	
-	function IsTrigFunction(stringIn, i)
-	{
-	   return false;
-	}
 
-	function DetermineMulDivType(stringIn, i)
-	{
-	   if ((stringIn.charAt(i) == "&") && 
-	      (stringIn.charAt(i+1) == "d") &&
-		  (stringIn.charAt(i+2) == "o") &&
-		  (stringIn.charAt(i+3) == "t") &&
-		  (stringIn.charAt(i+4) == ";") )
-        {
-		   return "multiply";
-        }		
-		if (stringIn.charAt(i) == "/")
-		{
-		  return "divide";
-		}
-		return false;
-	}
 	
-	function IsMultiplicationDivision(stringIn, i)
-	{
-	   //alert("Checking for mult/div, starting char = " + stringIn.charAt(i));
-	   if ((stringIn.charAt(i) == "&") && 
-	      (stringIn.charAt(i+1) == "d") &&
-		  (stringIn.charAt(i+2) == "o") &&
-		  (stringIn.charAt(i+3) == "t") &&
-		  (stringIn.charAt(i+4) == ";") )
-        {
-		   return true;
-        }		
-		if (stringIn.charAt(i) == "/")
-		{
-		  return true;
-		}
-		return false;
-	}
-
-	function DetermineAddSubType(stringIn, i)
-	{
-	   if (stringIn.charAt(i) == "+") 
-	   {
-	      return("addition");
-	   }
-	   
-	   if (stringIn.charAt(i) == "-")
-	   {
-		   return("subtraction");
-	   }
-	}
+	////////////////////////////////////////////////////////////////////////////////////
 	
-	function IsAddSubtract(stringIn, i)
-	{
-	   if ((stringIn.charAt(i) == "+") ||
-	       (stringIn.charAt(i) == "-") )
-		{
-		   return true;
-		}
-		else
-		{
-		   return false;
-		}
-	}
 	
-	function IsExponent(stringIn, i)
-	{
-	   if ((stringIn.charAt(i) == "<") && 
-	      (stringIn.charAt(i+1) == "s") &&
-		  (stringIn.charAt(i+2) == "u") &&
-		  (stringIn.charAt(i+3) == "p") &&
-		  (stringIn.charAt(i+4) == ">") )
-	   {
-	      return true;
-	   }
-	   else
-	   {
-	      return false;
-	   }	
-	}
-	
-	function IsExponentEnd(stringIn, i)
-	{
-	   if ((stringIn.charAt(i) == "<") && 
-	      (stringIn.charAt(i+1) == "/") &&
-		  (stringIn.charAt(i+2) == "s") &&
-		  (stringIn.charAt(i+3) == "u") &&
-		  (stringIn.charAt(i+4) == "p") &&
-		  (stringIn.charAt(i+5) == ">") )
-	   {
-	      return true;
-	   }
-	   else
-	   {
-	      return false;
-	   }	
-	}	
-	
-    function identifyExpEnd(stringIn, i)
-    {
-	   var j = 0; // loop counter
-	   for (j = 0; j < (stringIn.length - i); j++)
-	   {
-	      if ((stringIn.charAt(i) == "<") && 
-		     (stringIn.charAt(i+1) == "/") &&
-	         (stringIn.charAt(i+2) == "s") &&
-		     (stringIn.charAt(i+3) == "u") &&
-		     (stringIn.charAt(i+4) == "p") &&
-		     (stringIn.charAt(i+5) == ">") )
-		  {
-		     break;
-		  }
-	   }
-	   return(j);
-    }		
-	
-	function IsDiff(stringIn, i)
-	{
-	   if (stringIn.charAt(i) == "&" && 
-	      (stringIn.charAt(i+1) == "p") &&
-		  (stringIn.charAt(i+2) == "a") &&
-		  (stringIn.charAt(i+3) == "r") &&
-		  (stringIn.charAt(i+4) == "t") &&
-		  (stringIn.charAt(i+5) == ";") )
-	   {
-	      return true;
-	   }
-	   else
-	   {
-	      return false;
-	   }
-	}
-	
-	function IsDiv(stringIn, i)
-	{
-	   if (stringIn.charAt(i) == "/")
-	   {
-	      return true;
-	   }
-	   else
-	   {
-	      return false;
-	   }
-	}	
-	
-	function IsParen(stringIn, i)
-	{
-	   if (stringIn.charAt(i) == "(")
-	   {
-	      return true;
-	   }
-	   else
-	   {
-	      return false;
-	   }
-	}
- 
-    function identifyNestedParen(stringIn, i)
-    {
-	   // stringIn should be a token that begins with the paren; 
-	   //  this will count open and closing pares until zero is reached and return the substring begining and end for slicing
-	   var parenCount = 0;
-	   var j = 0; // loop counter
-	   for (j = 0; j < (stringIn.length - i); j++)
-	   {
-	      if (stringIn.charAt(i + j) == '(')
-		  {
-		     parenCount++;
-		  } 
-		  if (stringIn.charAt(i + j) == ')')
-		  {
-		     parenCount--;
-		  }
-		  if (parenCount == 0)
-		  {
-		     break;
-		  }
-	   }
-	   return(j);
-    }	
-	
-	function Term()
-	{
-	   this.thisTerm = "";
-	   this.relationshipToNextTerm = "";
-	   this.relationshipToPreviousTerm = "";
-	   this.withRespectTo = [];
-	}
   </script>
   <input type="button" value="Simplify Equations" onclick="runStuff()" />
 </body>
