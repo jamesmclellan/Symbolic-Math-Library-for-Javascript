@@ -55,7 +55,9 @@
 			   var myTerm = new CTerm("", nextTermType, false);
 			   myTerm.terms = simplifiedTerms;
 			   myTerm.unevaluatedString = Unparse(myTerm.terms);
-			   //alert("Pushing term " + myTerm.unevaluatedString + " type " + myTerm.relationshipToNextTerm);
+			   myTerm.isNegative = DetermineSign(myTerm.terms);
+			   myTerm.unevaluatedString = myTerm.unevaluatedString.replace(/^-/,""); // unparse places a "-" at the head of negative numbers, but we already know if the number is negative/positive, so trim this off
+			   //alert("Pushing term " + myTerm.unevaluatedString + " type " + myTerm.relationshipToNextTerm + " isNegative " + myTerm.isNegative);
 			   step3Terms.push(myTerm);		
 			   activeTerms = []; 
 			   bMultiplyDivideLatch = false;			   
@@ -82,12 +84,13 @@
 		   var myTerm = new CTerm("", "none", false);
 		   myTerm.terms = SimplifyMultiplicationDivision(activeTerms);
 		   myTerm.unevaluatedString = Unparse(myTerm.terms);
+		   myTerm.unevaluatedString = myTerm.unevaluatedString.replace(/^-/,""); // unparse places a "-" at the head of negative numbers, but we already know if the number is negative/positive, so trim this off
 		   //alert("Simplify mult/div returned " + unresolvedTerms.length + " terms");
 		   step3Terms = step3Terms.concat(myTerm);
 	   }
 
 	   // 4. handle addition/subtraction
-	   //alert("About to call add/sub with " + step3Terms.length + " terms");
+	   //alert("About to call add/sub with " + step3Terms.length + " terms. Term [0] = " + step3Terms[0].unevaluatedString);
        step4Terms = SimplifyAdditionSubtraction(step3Terms);
 	   //alert("Simplify add/sub returned " + step4Terms.length + " terms");
 	   PushToFinal(finalTerms, step4Terms);
@@ -481,3 +484,21 @@
 	}	
 	
 	////////////////////////////////////////////////////////////////////////////////////
+	
+	function DetermineSign( termInput )
+	{
+	   var returnValue = false;
+	   
+	   // loop through the multiplicative term array looking for negative numbers
+	   for (var i = 0; i < (termInput.length); i++)
+	   {
+	      if (termInput[i].isNegative)
+		  {
+		     // allow multiple negatives to negate eachother
+		     returnValue = !returnValue;
+		  }
+	   }
+	   return returnValue;
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////////	

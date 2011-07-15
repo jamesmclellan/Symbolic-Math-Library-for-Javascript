@@ -64,6 +64,7 @@
 	{
         //var thisTerm = new CTerm(stringToParse);	
 		
+		/*
 		DoTest("A", [new CTerm("A", "none")]);
 		DoTest("-A", [new CTerm("A", "none")]);
 		
@@ -82,7 +83,15 @@
 		DoTest("A<sup>-B</sup>", [new CTerm("A", "exponent"), new CTerm("B", "none")]);
 		DoTest("A<sup>B</sup>-(C&dot;D)/E", [new CTerm("A", "exponent"), new CTerm("B", "subtraction"), new CTerm("(C&dot;D)", "divide"), new CTerm("E", "none")]);
 		DoTest("A<sup>-B</sup>-(C&dot;D)/E", [new CTerm("A", "exponent"), new CTerm("B", "subtraction"), new CTerm("(C&dot;D)", "divide"), new CTerm("E", "none")]);
+		*/
 		
+		/*
+		DoTestDiff("&part;A/&part;x", ["A"], ["x"]);
+		DoTestDiff("&part;A/&part;x&part;t", ["A"], ["x", "t"]);
+		DoTestDiff("&part;x(0.5&dot;(1/A))", ["(0.5&dot;(1/A))"],["x"]);
+		*/
+		
+		/*
 		SimplifyTest(new CTerm("A/A"), [new CTerm("1", "none")]);
 		SimplifyTest(new CTerm("B/C&dot;C/B"), [new CTerm("1", "none")]);				
 		SimplifyTest(new CTerm("0&dot;B"), [new CTerm("0", "none")]);
@@ -100,20 +109,38 @@
 		SimplifyTest(new CTerm("A+B-A"), [new CTerm("B", "none")]);
 		SimplifyTest(new CTerm("A+B+C-B-A"), [new CTerm("C", "none")]);
 		SimplifyTest(new CTerm("A+B-C-B-A"), [new CTerm("C", "none")]);
-		
+		*/
 		
 		SimplifyTest(new CTerm("A&dot;B-A&dot;B"), [new CTerm("0", "none")]);
 		SimplifyTest(new CTerm("-A&dot;B+A&dot;B"), [new CTerm("0", "none")]);
 		SimplifyTest(new CTerm("A/B-A/B"), [new CTerm("0", "none")]);
-		SimplifyTest(new CTerm("-A/B+A/B"), [new CTerm("0", "none")]);		
+		SimplifyTest(new CTerm("-A/B+A/B"), [new CTerm("0", "none")]);
+		SimplifyTest(new CTerm("A/A-1"), [new CTerm("0", "none")]);
+		SimplifyTest(new CTerm("-A/A+1"), [new CTerm("0", "none")]);
+        SimplifyTest(new CTerm("A&dot;B+C-A&dot;B"), [new CTerm("C", "none")]);		
+		SimplifyTest(new CTerm("A&dot;B/C+C-A&dot;B/C"), [new CTerm("C", "none")]);	
+		SimplifyTest(new CTerm("A&dot;B+C-A&dot;B-C"), [new CTerm("0", "none")]);	
+		SimplifyTest(new CTerm("A/B+C-A/B+D"), [new CTerm("C", "addition"), new CTerm("D", "none")]);	
+		SimplifyTest(new CTerm("C&dot;B/B-C"), [new CTerm("0", "none")]);		
+		
+		SimplifyTest(new CTerm("A&dot;B-B&dot;A"), [new CTerm("0", "none")]);
+		SimplifyTest(new CTerm("A/B-B/A"), [new CTerm("0", "none")]);
+		
+		// :BUGS:
+		//  . "-A/A+1" is not returning zero -- this is because the unary operator, 
+		//         when pushed, always pushes a positive "1", it shoud instead
+		//         determine the sign of the two components and apply that to the "1"
+	    //  . "A/B+C-A/B+D" is returning term "C" as being subtracted from term "D"
+		//         this has something to do with how types are collected
+		
+		// :NEXT:
+		//  . Equivalent expressions
+		//  . Exponents
+		//  . Partial differentials
+		//  . Simplifying partial differentials
 		
 		// :TODO: Need to modify unit test to check for the sign on the resulting numbers
 		
-		/*
-		DoTestDiff("&part;A/&part;x", ["A"], ["x"]);
-		DoTestDiff("&part;A/&part;x&part;t", ["A"], ["x", "t"]);
-		DoTestDiff("&part;x(0.5&dot;(1/A))", ["(0.5&dot;(1/A))"],["x"]);
-		*/
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////
