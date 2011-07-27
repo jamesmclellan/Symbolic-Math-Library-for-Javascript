@@ -1,0 +1,86 @@
+<html>
+  <head>
+  <script type="text/javascript" src="cterm.js"></script> 
+  <script type="text/javascript" src="parser.js"></script>
+  <script type="text/javascript" src="simplify.js"></script>
+  <script type="text/javascript" src="factorialloop.js"></script>  
+  <script type="text/javascript">  
+     function simplifyEquation()
+	 {
+	     var inputTerm = document.getElementById("input");
+		 var resultsDiv = document.getElementById("results");
+		 
+		 var inputValue = inputTerm.value;
+		 
+		 if (inputValue != null)
+		 {
+		    var myTerm = new CTerm(inputValue);
+			myTerm.Evaluate(myTerm.unevaluatedString);
+			var resultTerm = new CTerm("");
+		    resultTerm.terms = SimplifyTerms(myTerm);
+			resultTerm.unevaluatedString = Unparse(resultTerm.terms);
+			
+			resultsDiv.innerHTML = resultTerm.unevaluatedString;
+		 }
+	 }
+  </script>
+  </head>
+  <body>
+       <div id="intro">
+	       This is a demonstrator for the symbolic math library for javascript.
+		   <br><br>
+		   The library is under development. Not all math operations are supported, and there are undoubtably bugs.
+		   <br><br>
+		   Enter your equation below. Hit the "simplify" button and see the result.
+		   <br><br>
+		   Equations need to be formatted as follows:
+		   <br><br>
+		   <ul>
+		     <li>Addition: A+B</li>
+			 <li>Subtraction: A-B</li>
+			 <li>Multiplication: A&amp;dot;B</li>
+			 <li>Division: A/B</li>
+			 <li>Exponent: A&lt;sup&gt;B&lt;/sup&gt;</li>
+			 <li>Partial Differential: &amp;part;x(A)</li>
+		   </ul>
+		   <br><br>
+		   Enter your equation here: <input id="input" type="text" value="" width="100">
+		   <br>
+		   <input id="simplify" value="Simplify" type="button" onclick="simplifyEquation()">
+		   <br>
+	   </div>
+	   <div id="results">
+	   </div>
+	   <div id="notes">
+	   <h2>Notes (equations tested to work)</h2>
+	   <ul> 
+		<li>A/A</li>
+		<li>B/C&dot;C/B</li>		
+		<li>0&dot;B</li>
+		<li>A&dot;B/C&dot;0/B</li>	
+		<li>B&dot;A/A</li>
+		<li>A&dot;B/A</li>	
+		<li>A&dot;A/A</li>
+		<li>1/A</li>
+		<li>C/A</li>
+		<li>A&dot;B/C&dot;C/B</li>
+		<li>A-A</li>
+		<li>-A+A</li>
+		<li>A+B-A-B</li>
+		<li>A+B-A</li>
+		<li>A+B+C-B-A</li>
+		<li>A+B-C-B-A</li>
+		<li>A&dot;B-A&dot;B</li>
+		<li>-A&dot;B+A&dot;B</li>
+		<li>A/B-A/B</li>
+		<li>-A/B+A/B</li>
+		<li>A/A-1</li>
+		<li>-A/A+1</li>
+        <li>A&dot;B+C-A&dot;B</li>
+		<li>A&dot;B/C+C-A&dot;B/C</li>
+		<li>A&dot;B+C-A&dot;B-C</li>
+		<li>A/B+C-A/B+D</li>
+		<li>C&dot;B/B-C</li>   
+	   </div>
+  </body>
+</html>
