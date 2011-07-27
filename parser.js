@@ -66,6 +66,175 @@
 	   }
 	   return returnString;
 	}
+
+	////////////////////////////////////////////////////////////////////////////////////
+	
+	function UnparseUnrelatedTerms(termArray)
+	{
+	   var returnString = "";
+	   var exponentLatch = false;
+	   
+	   for (var i = 0; i < termArray.length; i++)
+	   {
+			 // :: TODO :: Finish this
+			 //alert("Called UnparseUnrelated, this term = " + termArray[i].isMultiplicationTerm);
+			 if (termArray[i].isNegative)
+			 {
+			   returnString += "-";
+			 }
+			 if (termArray[i].withRespectTo.length > 0)
+			 {
+			   returnString += "&part;";
+			 }
+			 if (termArray[i].isDivisionTerm == true)
+			 {
+			   returnString += "/";
+			 }			 
+			 
+			 returnString += termArray[i].unevaluatedString;
+			 
+			 //if (exponentLatch)
+			 //{
+			//	returnString += "</sup>";
+			//	exponentLatch = false;
+			 //}
+			 if (termArray[i].withRespectTo.length > 0)
+			 {
+			   // :TODO: Loop through multiple w.r.t entries
+			   returnString += "/&part;" + termArray[i].withRespectTo[0];
+			 }			 
+			 //if (termArray[i].isAdditionTerm == true)
+			 //{
+			  // returnString += "+";
+			 //}
+			 //if (termArray[i].relationshipToNextTerm == "subtraction")
+			 //{
+			  // returnString += "-";
+			 //}
+			 if (termArray[i].isMultiplicationTerm == true && i < (termArray.length - 1))
+			 {
+			   returnString += "&dot;";
+			 }
+			 //if (termArray[i].relationshipToNextTerm == "exponent")
+			 //{
+			//	returnString += "<sup>";
+			//	exponentLatch = true;
+			 //}			 
+			 
+	   }
+	   return returnString;
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////	
+	
+	////////////////////////////////////////////////////////////////////////////////////
+	
+	function UnrelateTerms(termArray)
+	{
+	   // Most of the CTerm functions operate by assuming term 'A' is related to term 'B' 
+	   //   is related to term 'C', and so on.
+	   // For the sake of equivalent terms and other re-organization, unrelate terms so
+	   //    that they can be parsed
+	   
+	   var returnValue = termArray
+	   var exponentLatch = false;
+	   
+	   for (var i = 0; i < termArray.length-1; i++)
+	   {
+			 // :: TODO :: Finish this
+			 //if (termArray[i].isNegative)
+			 //{
+			 //  returnString += "-";
+			 //}
+			 //if (termArray[i].withRespectTo.length > 0)
+			 //{
+			 //  returnString += "&part;";
+			 //}
+			 
+			 //returnString += termArray[i].unevaluatedString;
+			 
+			 //if (exponentLatch)
+			 //{
+			//	returnString += "</sup>";
+			//	exponentLatch = false;
+			 //}
+			 //if (termArray[i].withRespectTo.length > 0)
+			 //{
+			 //  // :TODO: Loop through multiple w.r.t entries
+			 //  returnString += "/&part;" + termArray[i].withRespectTo[0];
+			 //}			 
+			 //if (termArray[i].relationshipToNextTerm == "addition")
+			 //{
+			 //  returnValue[i] = SetTermType(returnValue[i], "addition");
+			 //  returnValue[i+1] = SetTermType(returnValue[i+1], "addition");
+			 //}
+			 //if (termArray[i].relationshipToNextTerm == "subtraction")
+			 //{
+			 //  returnValue[i+1].isSubtractionTerm = true;
+			 //}
+			 if (termArray[i].relationshipToNextTerm == "multiply")
+			 {
+			   //alert("Trying to add a multiply term");
+			   if (i == 0)
+			   {
+			      returnValue[i] = SetTermType(returnValue[i], "multiply");			   
+			   }
+			   returnValue[i+1] = SetTermType(returnValue[i+1], "multiply");			   
+			 }
+			 if (termArray[i].relationshipToNextTerm == "divide")
+			 {
+			   //if (i == 0)
+			   //{
+			      returnValue[i] = SetTermType(returnValue[i], "multiply");			   
+			   //}
+			   returnValue[i+1] = SetTermType(returnValue[i+1], "divide");			   
+			 }
+			 //if (termArray[i].withRespectTo == "exponent")
+			 //{
+			//	returnString += "<sup>";
+			//	exponentLatch = true;
+			 //}			 
+			 
+	   }	
+       return returnValue;	   
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////////
+
+	function SetTermType(term, type)
+	{
+	
+	  if (type == "addition")
+	  {
+	    term.isAdditionTerm = true;
+		term.isSubtractionTerm = false;
+		term.isMultiplicationTerm = false;
+		term.isDivisionTerm = false;
+	  }
+	  if (type == "subtraction")
+	  {
+	    term.isAdditionTerm = false;
+		term.isSubtractionTerm = true;
+		term.isMultiplicationTerm = false;
+		term.isDivisionTerm = false;	  
+	  }
+	  if (type == "multiply")
+	  {
+	    term.isAdditionTerm = false;
+		term.isSubtractionTerm = false;
+		term.isMultiplicationTerm = true;
+		term.isDivisionTerm = false;	  
+	  }
+	  if (type == "divide")
+	  {
+	    term.isAdditionTerm = false;
+		term.isSubtractionTerm = false;
+		term.isMultiplicationTerm = false;
+		term.isDivisionTerm = true;		  
+	  }
+	  
+	  return term;
+	}
 	
 	////////////////////////////////////////////////////////////////////////////////////
 	

@@ -52,11 +52,7 @@
                simplifiedTerms = SimplifyMultiplicationDivision(activeTerms);
 			   //alert("Simplify mult/div returned " + simplifiedTerms.length + " terms, value " + simplifiedTerms[0].unevaluatedString);
 			   // copy the results of the simplification to a new CTerm
-			   var myTerm = new CTerm("", nextTermType, false);
-			   myTerm.terms = simplifiedTerms;
-			   myTerm.unevaluatedString = Unparse(myTerm.terms);
-			   myTerm.isNegative = DetermineSign(myTerm.terms);
-			   myTerm.unevaluatedString = myTerm.unevaluatedString.replace(/^-/,""); // unparse places a "-" at the head of negative numbers, but we already know if the number is negative/positive, so trim this off
+               var myTerm = PackageMultDivReturnValue( simplifiedTerms, nextTermType );
 			   //alert("Pushing term " + myTerm.unevaluatedString + " type " + myTerm.relationshipToNextTerm + " isNegative " + myTerm.isNegative);
 			   step3Terms.push(myTerm);		
 			   activeTerms = []; 
@@ -65,28 +61,23 @@
 			// if we've come to the end of a string of multiplication/division operators, then it is time to work on
 			//    the given string/array, then reset for the next possible string
 			else if (bMultiplyDivideLatch)
-			{		
-
-			   // copy the results also to the final array
+			{	
+               // :TODO: This branch may be unnecessary. Investigate and remove.			
 			   // :NOTE: The "i" index term has not yet been pushed onto the finalTerms array
 			   //        that will happen later
-			   //finalTerms = finalTerms.concat(simplifiedTerms);
-			   // clear out activeterms array
-			} // end of multiplication-division handling subsection
+			} 
 			else if (!bMultiplyDivideLatch)
 			{
 			   step3Terms.push(termInput.terms[i]);
-			}
+			} // end of multiplication-division handling subsection
 	   } // done with term loop
 	   
 	   if (activeTerms.length > 0) {	   
 	       //alert("Called here too!");			
-		   var myTerm = new CTerm("", "none", false);
-		   myTerm.terms = SimplifyMultiplicationDivision(activeTerms);
-		   myTerm.unevaluatedString = Unparse(myTerm.terms);
-		   myTerm.unevaluatedString = myTerm.unevaluatedString.replace(/^-/,""); // unparse places a "-" at the head of negative numbers, but we already know if the number is negative/positive, so trim this off
+		   simplifiedTerms = SimplifyMultiplicationDivision(activeTerms);	
+           var myTerm = PackageMultDivReturnValue( simplifiedTerms, "none" );		   
 		   //alert("Simplify mult/div returned " + unresolvedTerms.length + " terms");
-		   step3Terms = step3Terms.concat(myTerm);
+		   step3Terms = step3Terms.push(myTerm);
 	   }
 
 	   // 4. handle addition/subtraction
@@ -98,19 +89,81 @@
 	   {
 	      finalTerms[finalTerms.length - 1].relationshipToNextTerm = "none";
 	   }
-	   //finalTerms.concat(step4Terms)
-	  
-	  // :TODO: Think the commented block below may be ready to trash. Do that and re-run all unit tests at some stable time
-	   // if any terms are still unhandled, handle them now
-	   //step3Terms = SimplifyMultiplicationDivision(activeTerms);
-	   //step4Terms = SimplifyAdditionSubtraction(step3Terms);
-	   //PushToFinal(finalTerms, step4Terms);
-	   //finalTerms = finalTerms.concat(step4Terms);
-	   //alert("Return value = " + simplifiedTerms[0].unevaluatedString );
+
 	   return finalTerms;
 	}
+
+    ////////////////////////////////////////////////////////////////////////////////////
 	
-////////////////////////////////////////////////////////////////////////////////////
+	function PackageMultDivReturnValue( valueToPackage, type )
+	{
+	   var myTerm = new CTerm("", type, false);
+	   myTerm.terms = valueToPackage;
+	   myTerm.unevaluatedString = Unparse(myTerm.terms);
+	   //alert("Entering factorial loop to find equivalent terms for " + myTerm.unevaluatedString);
+	   myTerm.equivalentTerms = FindEquivalentTerms(myTerm);
+	   myTerm.isNegative = DetermineSign(myTerm.terms);
+	   myTerm.unevaluatedString = myTerm.unevaluatedString.replace(/^-/,""); // unparse places a "-" at the head of negative numbers, but we already know if the number is negative/positive, so trim this off	   
+	   return myTerm;
+	}
+	
+    ////////////////////////////////////////////////////////////////////////////////////
+
+    function FindEquivalentTerms( termInput )
+    {
+	   // This function is a wrapper for the factorial loop.
+	   // It instances an evaluation function, sets the data and return attributes on that function object
+	   //    and then starts the factorial loop
+	   var returnArray = [];
+	   var makeEquivalents = new ReEntrantWrapper;
+	   makeEquivalents.functionToCall = MakeEquivalents;
+	   makeEquivalents.terms = UnrelateTerms(termInput.terms);
+	   makeEquivalents.returnArray = [];
+	   
+	   FactorialLoop(termInput.terms.length, makeEquivalents)
+	   
+	   //alert("Factorial loop found " + makeEquivalents.returnArray.length + " equivalent terms. Values " + PrintArray(makeEquivalents.returnArray));
+	   returnArray = makeEquivalents.returnArray;
+	   return returnArray;
+    }	
+	
+    ////////////////////////////////////////////////////////////////////////////////////
+	
+	function MakeEquivalents( indexArray )
+	{
+	   // This function is an object intended to be passed into a factorial loop and evaluated
+	   //   within that loop. It uses externally-set variables for data and return.
+	   var tempArray = [];
+	   var tempString = "";
+	   
+	   //alert("MakeEquivalents called with the following indices " + PrintArray(indexArray));
+	   for (var i = 0; i < indexArray.length; i++)
+	   {
+	       // :NOTE: "terms" is an attribute generated outside this function
+	       tempArray.push( this.terms[indexArray[i]] );  
+	   }
+ 
+       //alert("About to unparse terms array " + PrintCTermArray(tempArray));
+       tempString = UnparseUnrelatedTerms(tempArray);
+	   
+	   // :NOTE: "returnArray" is an attribute generated outside this function
+	   this.returnArray.push( tempString );
+	}
+
+    ////////////////////////////////////////////////////////////////////////////////////
+	
+	function PrintCTermArray(inputArray)
+	{
+	  var returnValue = "";
+	  //alert("Print Array called with " + inputArray.length + " terms to print");
+	  for (var i = 0 ; i < inputArray.length; i++)
+	  {
+	     returnValue += " " + inputArray[i].unevaluatedString;
+	  }
+	  return returnValue;
+	}
+	
+    ////////////////////////////////////////////////////////////////////////////////////
 	
 	function SimplifyAdditionSubtraction(step3Terms)
 	{
@@ -125,9 +178,8 @@
 	   if (IsSubtractionInTermArray(step3Terms))   
 	   {
 			  //   c. see if that subtraction term matches a positive term (or equivalent)
-              CancelAdditionSubtractionTerms(additionTerms, subtractionTerms, step3Terms);
-			  
-			  //   d. zero out both terms	   			  
+			  //   d. zero out both terms	
+              CancelAdditionSubtractionTerms(additionTerms, subtractionTerms, step3Terms);   			  
 		}
 		  
   	    // put addition term array	  
@@ -136,9 +188,10 @@
 		    if (additionTerms[j] != null)
 		    {
 			   //alert("Pushing add term " + additionTerms[j].unevaluatedString);
-			   if (j > 0)
-			   {
-  			     additionTerms[j-1].relationshipToNextTerm = "addition";
+			   var closestPrevious = GetClosestPreviousValue(additionTerms, j);
+			   if (closestPrevious >= 0)
+			   { 
+  			     additionTerms[closestPrevious].relationshipToNextTerm = "addition";
 			   }
 			   simplifiedTerms.push(additionTerms[j]);
 		    }
@@ -149,9 +202,10 @@
 		    if (subtractionTerms[j] != null)
 		    {
 			   //alert("Pushing sub term " + subtractionTerms[j].unevaluatedString);
-			   if (j > 0)
+			   var closestPrevious = GetClosestPreviousValue(subtractionTerms, j);
+			   if (closestPrevious >= 0)
 			   {
-			     subtractionTerms[j-1].relationshipToNextTerm = "subtraction";
+			     subtractionTerms[closestPrevious].relationshipToNextTerm = "subtraction";
 			   }
    			   simplifiedTerms.push(subtractionTerms[j]);
 		    }
@@ -163,8 +217,6 @@
 		   simplifiedTerms.push(new CTerm("0", "none"));
 		   //alert("Adding zero term to results, value = " + simplifiedTerms[0].unevaluatedString );
 	    }	  	
-		// if, after all simplification is done, there is only a single term left, clear it's relationship to any other term
-		// :NOTE: This might be a bad idea... don't I want to keep a +/- sign on the result??
 	  
 	    return simplifiedTerms;
 	}
@@ -291,6 +343,34 @@
 					   
 					   // break to next denominator
 					   break;			
+					} 
+					else 
+					{
+					   var foundLatch = false;
+					   //alert("Didn't find a match for subtraction term, try equivalent terms " + PrintTermArray(subtractionTerms[j].equivalentTerms));
+					   // loop through the equivalent terms array to see if a match exists
+					   for (var l = 0; l < subtractionTerms[j].equivalentTerms.length; l++)
+					   {
+							if (subtractionTerms[j].equivalentTerms[l] == additionTerms[k].unevaluatedString)
+							{			
+							   //alert("Cancelling terms found. Deleting subtraction term " + subtractionTerms[j].unevaluatedString + " and addition term " + additionTerms[k].unevaluatedString);
+							   // delete from the termArray array
+							   DeleteFromArray(termArray, subtractionTerms[j].id);
+							   DeleteFromArray(termArray, additionTerms[k].id);					   
+							   
+							   // delete from the numeratorTerms and subtractionTerms array
+							   DeleteFromArray(subtractionTerms, subtractionTerms[j].id);
+							   DeleteFromArray(additionTerms, additionTerms[k].id);					   
+							   
+							   // break to next denominator
+							   foundLatch = true
+							   break;			
+							} 					   
+					   }
+					   if (foundLatch == true)
+					   {
+					      break;
+					   }
 					}
 				}
 			}
@@ -513,5 +593,23 @@
 	   }
 	   return returnValue;
 	}
+	
+	////////////////////////////////////////////////////////////////////////////////////
+	
+	function GetClosestPreviousValue(arrayInput, currentPosition)
+	{
+	   var returnValue = -1;
+	   
+	   for (var i = (currentPosition-1); i >= 0; i--)
+	   {
+	     if (arrayInput[i] != null)
+		 {
+		   returnValue = i;
+		   break;
+		 }
+	   }
+	   
+	   return returnValue;
+	}	
 	
 	////////////////////////////////////////////////////////////////////////////////////	
