@@ -37,14 +37,17 @@
 	   this.relationshipToPreviousTerm = "";
 	   this.relationshipToNextTerm = "";
 	   this.operation = "";
-	   this.withRespectTo = new Array();
-	   this.terms = new Array();
+	   this.withRespectTo = new Array(); 
+	   this.terms = new Array(); // the decomposed terms of the unevaluatedString for this term
 	   //this.terms[0] = []; // the 0-row of the terms array is the current (unexpanded) level
 	   this.Evaluate = Parse;
 	   this.Simplify = SimplifyTerms;
-	   this.unevaluatedString = termString;
+	   this.unevaluatedString = termString; // the string meaning of this term
+	   this.equivalentTerms = new Array(); // array of variations to the unevaluatedString that are equal in meaning
 	   //this.Evaluate(termString);
 	   this.isNegative = false;
+	   this.multiplier = "1"; // treat as a string since a non-numeric term could possibly end up here
+	   this.exponent = "1";	 // treat as a string since a non-numeric term could possibly end up here
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////
@@ -62,8 +65,12 @@
 	   this.Evaluate = Parse;
 	   this.Simplify = SimplifyTerms;
 	   this.unevaluatedString = termString;
+	   this.equivalentTerms = new Array(); // array of variations to the unevaluatedString that are equal in meaning
 	   //this.Evaluate(termString);
 	   this.isNegative = false;
+	   this.isDenominator = false;
+	   this.multiplier = "1"; // treat as a string since a non-numeric term could possibly end up here
+	   this.exponent = "1";	 // treat as a string since a non-numeric term could possibly end up here
 	}	
 	
 	////////////////////////////////////////////////////////////////////////////////////
@@ -81,6 +88,9 @@
 	   this.Evaluate = Parse;
 	   this.Simplify = SimplifyTerms;
 	   this.unevaluatedString = termString;
+	   this.equivalentTerms = new Array(); // array of variations to the unevaluatedString that are equal in meaning
 	   //this.Evaluate(termString);
 	   this.isNegative = isNegative;
+	   this.multiplier = "1"; // treat as a string since a non-numeric term could possibly end up here
+	   this.exponent = "1";	 // treat as a string since a non-numeric term could possibly end up here
 	}	

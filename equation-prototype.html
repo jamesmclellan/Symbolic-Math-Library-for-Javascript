@@ -6,6 +6,8 @@
   <script type="text/javascript" src="cterm.js"></script> 
   <script type="text/javascript" src="parser.js"></script>
   <script type="text/javascript" src="simplify.js"></script>
+  <script type="text/javascript" src="factorialloop.js"></script>  
+  
   
   <script type="text/javascript">
   
@@ -64,7 +66,7 @@
 	{
         //var thisTerm = new CTerm(stringToParse);	
 		
-		
+		/*
 		DoTest("A", [new CTerm("A", "none")]);
 		DoTest("-A", [new CTerm("A", "none")]);
 		
@@ -79,10 +81,10 @@
 		DoTest("(A+B)-C+(D+E)",[new CTerm("(A+B)", "subtraction"), new CTerm("C", "addition"), new CTerm("(D+E)", "none")]);
 		DoTest("(A&dot;(B+C)-D)+E+(F&dot;((G+1)/H))", [new CTerm("(A&dot;(B+C)-D)", "addition"), new CTerm("E", "addition"), new CTerm("(F&dot;((G+1)/H))", "none")]);
 		
-		DoTest("A<sup>B</sup>", [new CTerm("A", "exponent"), new CTerm("B", "none")]);
-		DoTest("A<sup>-B</sup>", [new CTerm("A", "exponent"), new CTerm("B", "none")]);
-		DoTest("A<sup>B</sup>-(C&dot;D)/E", [new CTerm("A", "exponent"), new CTerm("B", "subtraction"), new CTerm("(C&dot;D)", "divide"), new CTerm("E", "none")]);
-		DoTest("A<sup>-B</sup>-(C&dot;D)/E", [new CTerm("A", "exponent"), new CTerm("B", "subtraction"), new CTerm("(C&dot;D)", "divide"), new CTerm("E", "none")]);
+		DoTest("A<sup>B</sup>", [new CTerm("A", "none")]);
+		DoTest("A<sup>-B</sup>", [new CTerm("A", "exponent")]);
+		DoTest("A<sup>B</sup>-(C&dot;D)/E", [new CTerm("A", "exponent"), new CTerm("(C&dot;D)", "divide"), new CTerm("E", "none")]);
+		DoTest("A<sup>-B</sup>-(C&dot;D)/E", [new CTerm("A", "exponent"), new CTerm("(C&dot;D)", "divide"), new CTerm("E", "none")]);
 		
 		
 		
@@ -109,24 +111,60 @@
 		SimplifyTest(new CTerm("A+B-A"), [new CTerm("B", "none")]);
 		SimplifyTest(new CTerm("A+B+C-B-A"), [new CTerm("C", "none")]);
 		SimplifyTest(new CTerm("A+B-C-B-A"), [new CTerm("C", "none")]);
+		*/
+		
+		//SimplifyTest(new CTerm("A&dot;B-A&dot;B"), [new CTerm("0", "none")]);
+		//SimplifyTest(new CTerm("-A&dot;B+A&dot;B"), [new CTerm("0", "none")]);
+		//SimplifyTest(new CTerm("A/B-A/B"), [new CTerm("0", "none")]);
+		//SimplifyTest(new CTerm("-A/B+A/B"), [new CTerm("0", "none")]);
+		//SimplifyTest(new CTerm("A/A-1"), [new CTerm("0", "none")]);
+		//SimplifyTest(new CTerm("-A/A+1"), [new CTerm("0", "none")]);
+        //SimplifyTest(new CTerm("A&dot;B+C-A&dot;B"), [new CTerm("C", "none")]);		
+		//SimplifyTest(new CTerm("A&dot;B/C+C-A&dot;B/C"), [new CTerm("C", "none")]);	
+		//SimplifyTest(new CTerm("A&dot;B+C-A&dot;B-C"), [new CTerm("0", "none")]);	
+		//SimplifyTest(new CTerm("A/B+C-A/B+D"), [new CTerm("C", "addition"), new CTerm("D", "none")]);	
+		//SimplifyTest(new CTerm("C&dot;B/B-C"), [new CTerm("0", "none")]);		
+		
+		//SimplifyTest(new CTerm("A&dot;B-B&dot;A"), [new CTerm("0", "none")]);
+		SimplifyTest(new CTerm("A/B-B/A"), [new CTerm("A", "divide"), new CTerm("B", "subtraction"), new CTerm("B", "divide"), new CTerm("A", "none")]);
+
+        SimplifyTest(new CTerm("A&dot;A"), [new CTerm("A<sup>2</sup>", "none")]);
+		SimplifyTest(new Cterm("A<sup>2</sup>&dot;A"), [new CTerm("A<sup>3</sup>", "none")]);
+		SimplifyTest(new CTerm("A<sup>3</sup>/A)", [new CTerm("A<sup>2</sup>", "none")]);
 		
 		
-		SimplifyTest(new CTerm("A&dot;B-A&dot;B"), [new CTerm("0", "none")]);
-		SimplifyTest(new CTerm("-A&dot;B+A&dot;B"), [new CTerm("0", "none")]);
-		SimplifyTest(new CTerm("A/B-A/B"), [new CTerm("0", "none")]);
-		SimplifyTest(new CTerm("-A/B+A/B"), [new CTerm("0", "none")]);
-		SimplifyTest(new CTerm("A/A-1"), [new CTerm("0", "none")]);
-		SimplifyTest(new CTerm("-A/A+1"), [new CTerm("0", "none")]);
-        SimplifyTest(new CTerm("A&dot;B+C-A&dot;B"), [new CTerm("C", "none")]);		
-		SimplifyTest(new CTerm("A&dot;B/C+C-A&dot;B/C"), [new CTerm("C", "none")]);	
-		SimplifyTest(new CTerm("A&dot;B+C-A&dot;B-C"), [new CTerm("0", "none")]);	
-		SimplifyTest(new CTerm("A/B+C-A/B+D"), [new CTerm("C", "addition"), new CTerm("D", "none")]);	
-		SimplifyTest(new CTerm("C&dot;B/B-C"), [new CTerm("0", "none")]);		
-		
-		SimplifyTest(new CTerm("A&dot;B-B&dot;A"), [new CTerm("0", "none")]);
-		SimplifyTest(new CTerm("A/B-B/A"), [new CTerm("0", "none")]);
+		// steps needed
+		// . need to hold exponent as an attribute to a term, not as it's own term
+		// . need to add an operation at the end of multiplication that adds like terms into exponents
+		//    . something like the division operation, that deletes one duplicate and adds a multiplier to the
+		//       end result
+		//    . multiplier needs to (?) somehow be identifiable
+		//    . "A^2" and "A" can interact in a multiplication operation, but not an addition operation
+		// . need to add an operation at the end of addition/subtraction that adds like terms into 
+		//     multiplication
+		//    . "A^2" and "A" can not interact in an addition/subtraction operation
+		// . need to add a PerformDifferential() function
+		//    . for each term:
+		//       . Apply the product or quotient rule, if necessary
+		//         . Do this only if a term is a multiplication or division term
+		//       . Otherwise, multiply the old exponent by the multiplier
+		//         . This is for addition/subtraction terms
+		//       . Reduce the exponent in value by "1"
+		//       . If the exponent is zero, replace the term with "1"
+		//       . If a term is a numeric constant (no exponent), reduce to "0"
+		//
+		// NEW TESTS
+		// dx(A^2) = 2*A dA/dx
+		// dx(1/A) = -1/A^2 dA/dx
+		// dx(A dA/dx) = d^2A/dx^2
+		// dx(A^3 + 2A^2) = (3A^2 + 4A)*dA/dx
+		// dx(AB) = BdA/dx + AdBdx
+		// dx(A/B) = (BdA/dx - AdB/dx)/(B^2)
+		//
+		//SimplifyTest(new CTerm("&part;x(A<sup>2</sup>)"), new CTerm
 		
 		// :BUGS:
+		//  Are these bugs still valid?? Re-test
 		//  . "-A/A+1" is not returning zero -- this is because the unary operator, 
 		//         when pushed, always pushes a positive "1", it shoud instead
 		//         determine the sign of the two components and apply that to the "1"
@@ -152,14 +190,13 @@
 	function SimplifyTest( termInput, expectedResults )
 	{
 		var testString = termInput.unevaluatedString;	
-	    //alert("Running test " + testString );
+	    alert("Running test " + testString );
 		termInput.Evaluate(termInput.unevaluatedString);
 		var resultTerm = new CTerm("");
 		resultTerm.terms = SimplifyTerms(termInput);
-		//resultTerm = termInput.Simplify(termInput);
 		//alert("Simplify returned " + resultTerm.terms.length + " term, value = " + resultTerm.terms[0].unevaluatedString );
 		checkUnitTest(testString, resultTerm, expectedResults);	
-		//alert("Completed test " + testString );	
+		alert("Completed test " + testString );	
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////
@@ -203,7 +240,17 @@
 	      if (term.terms[i].relationshipToNextTerm != expectedResults[i].relationshipToNextTerm)
 		  {
 		     alert( "TEST Type: '" + testname + "' term " + (i) + ". Expected '" + expectedResults[i].relationshipToNextTerm + "', observed '" + term.terms[i].relationshipToNextTerm + "'"); 
-		  }		  
+		  }		
+          // check sign
+	      if (term.terms[i].isNegative != expectedResults[i].isNegative)
+		  {
+		     alert( "TEST Sign: '" + testname + "' term " + (i) + ". Expected '" + expectedResults[i].isNegative + "', observed '" + term.terms[i].isNegative + "'"); 
+		  }		
+          // check exponent		  
+	      if (term.terms[i].exponent != expectedResults[i].exponent)
+		  {
+		     alert( "TEST Exponent: '" + testname + "' term " + (i) + ". Expected '" + expectedResults[i].exponent + "', observed '" + term.terms[i].exponent + "'"); 
+		  }				  
 		  // check partial differentials
 		  // :TODO:
 	   }

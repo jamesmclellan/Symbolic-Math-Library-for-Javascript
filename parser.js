@@ -15,7 +15,6 @@
 	function Unparse(termArray)
 	{
 	   var returnString = "";
-	   var exponentLatch = false;
 	   
 	   for (var i = 0; i < termArray.length; i++)
 	   {
@@ -31,11 +30,6 @@
 			 
 			 returnString += termArray[i].unevaluatedString;
 			 
-			 if (exponentLatch)
-			 {
-				returnString += "</sup>";
-				exponentLatch = false;
-			 }
 			 if (termArray[i].withRespectTo.length > 0)
 			 {
 			   // :TODO: Loop through multiple w.r.t entries
@@ -57,10 +51,9 @@
 			 {
 			   returnString += "/";
 			 }
-			 if (termArray[i].withRespectTo == "exponent")
+			 if (termArray[i].exponent != "1")
 			 {
-				returnString += "<sup>";
-				exponentLatch = true;
+				returnString += "<sup>" + termArray[i].exponent + "</sup>";
 			 }			 
 			 
 	   }
@@ -243,6 +236,8 @@
 	    var newStart = 0; // the start of the buffer
 		var buffer = ""; // buffer for processed characters; separating this from the input string allows additional manipulation to be performed on the buffer (such as skipping over tags)
 		var nextTermIsNegative = false;
+		var waitingExponentFlag = false;
+		var waitingExponentBuffer = "";
 		
 		//alert("I have arrived for string " + stringIn);
 	    for (var i = 0; i < stringIn.length; i++)
@@ -347,6 +342,12 @@
 							//alert("Next term '" + stringIn.charAt(i+8+k) + "'");
 						}
 						i = newStart;
+						if (waitingExponentFlag == true)
+						{
+						    waitingExponentFlag = false;
+			                tempTerm.exponent = waitingExponentBuffer;
+							waitingExponentBuffer = "";
+			            }
 						this.terms.push(tempTerm);
 						buffer = ""; // clear the buffer
 						//alert("Clearing buffer in D");	
@@ -363,40 +364,23 @@
 			if (IsExponent(stringIn, i))
 			{
 			   //alert("IsExp");
-			   // a. get the whole exponent
-			   // b. evaluate whatever was immediately to the right of this and push it onto the terms array
-			   //    i. set the term's "relationshipToNextTerm" to "root"
-			   // c. push the whole exponent onto the terms array
-			   //    i. set the term's "relationshipToPreviousTerm" to "exponent"
-			   // d. skip i to the end of this block
-			   
-			   //alert("IsParen");
-			   // a. find the end of this paren group
-			   //var endOfExp = identifyExpEnd(stringIn, i);
-			   // b. push the paren group onto the terms array
-			   //var subTerm = stringIn.substring(i+1, endOfExp + i);
-			   //alert("Full paren found " + subTerm);
-			   //var tempTerm = new CTerm(subTerm);
-			   //this.terms.push(tempTerm);
-			   // c. skip i to the end of the paren group
-			   //i = i + endOfExp;			   
-			   //var subTerm = stringIn.substring(newStart, i );
-			   //alert("Creating term '" + buffer + "'.");
-			   var tempTerm = new CTerm(buffer); // create a new term from the buffer
-			   buffer = ""; // clear the buffer
-			   //alert("Clearing buffer in E");	
-			   tempTerm.relationshipToNextTerm = "exponent";
-			   this.terms.push(tempTerm);			   
 			   newStart = i+5;
 			   i = i+4;
+			   // a. find the end of this paren group
+			   var endOfExponent = identifyEndOfExponent(stringIn, i);
+			   waitingExponentFlag = true;
+			   waitingExponentBuffer += stringIn.substring(i, endOfExponent + i);
+			   // c. skip i to the end of the paren group
+			   i = i + endOfExponent + 4;
+			   newStart = i + 5;
 			}
 			
-			if (IsExponentEnd(stringIn, i))
-			{
+			//if (IsExponentEnd(stringIn, i))
+			//{
 			  // if this is the closing part of an exponent, advance past it
-			  newStart = i+6;
-              i = i+5
-			}
+			  //newStart = i+6;
+              //i = i+5
+			//}
 			
 			// Look for multiplication or division
 			if (IsMultiplicationDivision(stringIn, i))
@@ -416,6 +400,12 @@
 			   nextTermIsNegative = false;
 			   buffer = ""; // clear the buffer
 			   //alert("Clearing buffer in A");	
+				if (waitingExponentFlag == true)
+				{
+					waitingExponentFlag = false;
+					tempTerm.exponent = waitingExponentBuffer;
+					waitingExponentBuffer = "";
+				}			   
 			   this.terms.push(tempTerm);
 			   //    iii. do not get the next term
 			   //    iv. skip i to where the * or / was found
@@ -672,3 +662,21 @@
 	   }
 	   return(j);
     }
+	
+	////////////////////////////////////////////////////////////////////////////////////
+ 
+    function identifyEndOfExponent(stringIn, i)
+    {
+	   // stringIn should be a token that begins with the paren; 
+	   //  this will count open and closing pares until zero is reached and return the substring begining and end for slicing
+	   var parenCount = 0;
+	   var j = 0; // loop counter
+	   for (j = 0; j < (stringIn.length - i); j++)
+	   {
+	      if (IsExponentEnd(stringIn, i))
+		  {
+		     break;
+		  }
+	   }
+	   return(j);
+    }	
