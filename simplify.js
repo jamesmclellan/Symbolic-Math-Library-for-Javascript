@@ -344,6 +344,14 @@
 					   // break to next denominator
 					   break;			
 					} 
+					else if(IsANumber(subtractionTerms[j].unevaluatedString) && IsANumber(additionTerms[k].unevaluatedString))
+					{
+					   // check to see if the two terms are constants, if so, just add them
+					   SubtractConstant(subtractionTerms[j], parseFloat(additionTerms[k].unevaluatedString));
+					   DeleteFromArray(termArray, additionTerms[k].id);		
+					   DeleteFromArray(additionTerms, additionTerms[k].id);	
+					   // how to handle sign change on the subtractionTerm???
+					}
 					else 
 					{
 					   var foundLatch = false;
@@ -396,6 +404,9 @@
 			 {
 				if (denominatorTerms[j].unevaluatedString == numeratorTerms[k].unevaluatedString)
 				{
+				   // subtract and add exponents
+				   AddConstant(denominatorTerms[j].exponent, numeratorTerms[k].exponent)
+				   
 				   // preserve the sign of the pair to be deleted -- if it is negative, then push a "-1" onto the numerators stack
 				   if (denominatorTerms[j].isNegative != numeratorTerms[k].isNegative)
 				   {
@@ -613,3 +624,65 @@
 	}	
 	
 	////////////////////////////////////////////////////////////////////////////////////	
+	
+	function IsANumber(termIn)
+	{
+	   if (IsNaN(parseFloat(termIn.unevaluatedString)))
+	   {
+	      return false;
+	   }
+	   else
+	   {
+	      return true;
+	   }
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////////	
+	
+	function AddConstant(termIn, constantIn)
+	{
+	   for (var i=0; i < termIn.terms.length; i++)
+	   {
+	      if (IsANumber(termIn.terms[i]))
+		  {
+		     break;
+		  }
+	   }
+	   if (i < termIn.terms.length)
+	   {
+	      var originalValue = parseFloat(termIn.terms[i]);
+		  originalValue += constantIn;
+		  termIn.terms[i] = "" + originalValue + "";
+	   }
+	   else 
+	   {
+	      var myTerm = new CTerm("" + constantIn + "", "none", false);
+		  termIn.terms[i-1].relationshipToNextTerm = "addition";
+		  termIn.terms.push(myTerm);
+	   }
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////////	
+	
+	function SubtractConstant(termIn, constantIn)
+	{
+	   for (var i=0; i < termIn.terms.length; i++)
+	   {
+	      if (IsANumber(termIn.terms[i]))
+		  {
+		     break;
+		  }
+	   }
+	   if (i < termIn.terms.length)
+	   {
+	      var originalValue = parseFloat(termIn.terms[i]);
+		  originalValue -= constantIn;
+		  termIn.terms[i] = "" + originalValue + "";
+	   }
+	   else 
+	   {
+	      var myTerm = new CTerm("" + constantIn + "", "none", false);
+		  termIn.terms[i-1].relationshipToNextTerm = "subtraction";
+		  termIn.terms.push(myTerm);
+	   }
+	}	
