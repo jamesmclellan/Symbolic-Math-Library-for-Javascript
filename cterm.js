@@ -88,6 +88,7 @@
 	      this.isNegative = isNegative;
 	   }
 	   this.multiplier = "1"; // treat as a string since a non-numeric term could possibly end up here
+	   this.isParenthetical = false;
 	   
 	   if (typeof(exponentValue) == "undefined")
 	   {

@@ -245,6 +245,7 @@
 	    var newStart = 0; // the start of the buffer
 		this.buffer = ""; // buffer for processed characters; separating this from the input string allows additional manipulation to be performed on the buffer (such as skipping over tags)
 		var nextTermIsNegative = false;
+		var nextTermIsParenthetical = false;
 		this.waitingExponentFlag = false;
 		this.waitingExponentBuffer = "";
 		
@@ -265,6 +266,7 @@
 			   //alert("Full paren found " + subTerm);
 			   // c. skip i to the end of the paren group
 			   i = i + endOfParen;
+			   nextTermIsParenthetical = true;
 			   newStart = i + 1;
 			   //alert("End of parent reached. Next character = '" + stringIn.charAt(i) + "'");
 			}
@@ -300,7 +302,9 @@
 			   {
 			      var tempTerm = new CTerm(this.buffer, type, nextTermIsNegative); // create a new term using the string presently in the buffer
 				  //alert("New term " + buffer + " type " + type + " negative " + nextTermIsNegative);
+				  tempTerm.isParenthetical = nextTermIsParenthetical;
 				  nextTermIsNegative = false;
+				  nextTermIsParenthetical = false;
 				  
                   this.PushTerm(tempTerm);
 			   }
@@ -397,7 +401,9 @@
 			   //    ii. set the next term's "relationshipToPreviousTerm" to "multiplication" or "division"
 			   //var subTerm = stringIn.substring(newStart, i );
 			   var tempTerm = new CTerm(this.buffer, type, nextTermIsNegative);
+			   tempTerm.isParenthetical = nextTermIsParenthetical;
 			   nextTermIsNegative = false;
+			   nextTermIsParenthetical = false;
                this.PushTerm(tempTerm);
 			   //    iii. do not get the next term
 			   //    iv. skip i to where the * or / was found
@@ -430,7 +436,8 @@
 		//alert("End of String. Buffer = '" + buffer + "'.");
 		if (this.buffer.length > 0) {
 	       var tempTerm = new CTerm(this.buffer, "none", nextTermIsNegative);
-            this.PushTerm(tempTerm);
+		   tempTerm.isParenthetical = nextTermIsParenthetical;
+           this.PushTerm(tempTerm);
 		}
 		
 		var tempString = Unparse(this.terms);

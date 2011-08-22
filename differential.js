@@ -108,6 +108,11 @@
 	     var myTerm = new CTerm("1");
 		 resultTerm = myTerm;
 	  }	  
+	  else if ( IsANumber(termInput) )
+	  {
+	 	 var myTerm = new CTerm("0");
+		 resultTerm = myTerm; 
+	  }
 	  else if ( (expValue > 0) || (expValue < 0) )
 	  {
 	     mulValue *= (expValue + 1);

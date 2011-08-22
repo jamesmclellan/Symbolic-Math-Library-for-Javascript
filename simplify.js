@@ -33,7 +33,15 @@
 		   //       iv. When the last term is found, set the latch back low, perform the simplification, and copy the results to the results array
 		   //    a. Look for strings of multiply/divide operations
 		   //alert("Term " + termInput.terms[i].unevaluatedString + ", type = " + termInput.terms[i].relationshipToNextTerm);
-		   if (termInput.terms[i].withRespectTo.length > 0)
+		   if (termInput.terms[i].isParenthetical)
+		   {
+		      termInput.terms[i].Evaluate(termInput.terms[i].unevaluatedString);
+		      var resultTerm = new CTerm("");
+		      resultTerm.terms = SimplifyTerms(termInput.terms[i]);
+			  resultTerm.unevaluatedString = Unparse(resultTerm.terms); // unevaluate to get child's metadata into the parent term
+			  step3Terms.push(resultTerm);
+		   }
+		   else if (termInput.terms[i].withRespectTo.length > 0)
 		   {
 		      termInput.terms[i].Evaluate(termInput.terms[i].unevaluatedString); // evaluate the differential into individual terms; the parser moved the whole differential over
 		      termInput.terms[i].terms = PerformPartialDifferential(termInput.terms[i], termInput.terms[i].withRespectTo[0]);
