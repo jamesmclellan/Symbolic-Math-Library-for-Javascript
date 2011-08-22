@@ -35,12 +35,13 @@
 	   //alert("Creating term " + termString);
 	   this.id = GenerateNewID(globalIDCounter);
 	   this.relationshipToPreviousTerm = "";
-	   this.relationshipToNextTerm = "";
+	   this.relationshipToNextTerm = "none";
 	   this.operation = "";
 	   this.withRespectTo = new Array(); 
 	   this.terms = new Array(); // the decomposed terms of the unevaluatedString for this term
 	   //this.terms[0] = []; // the 0-row of the terms array is the current (unexpanded) level
 	   this.Evaluate = Parse;
+	   this.Unevaluate = Unparse;
 	   this.Simplify = SimplifyTerms;
 	   this.unevaluatedString = termString; // the string meaning of this term
 	   this.equivalentTerms = new Array(); // array of variations to the unevaluatedString that are equal in meaning
@@ -48,71 +49,55 @@
 	   this.isNegative = false;
 	   this.multiplier = "1"; // treat as a string since a non-numeric term could possibly end up here
 	   this.exponent = "1";	 // treat as a string since a non-numeric term could possibly end up here
+	   
+	   // private methods
+	   this.PushTerm = PushTermFromBuffer;
 	}	
 	
 	////////////////////////////////////////////////////////////////////////////////////
- 
-    function CTerm(termString)
-	{
-	   //alert("Creating term " + termString);
-	   this.id = GenerateNewID(globalIDCounter);
-	   this.relationshipToPreviousTerm = "";
-	   this.relationshipToNextTerm = "";
-	   this.operation = "";
-	   this.withRespectTo = new Array(); 
-	   this.terms = new Array(); // the decomposed terms of the unevaluatedString for this term
-	   //this.terms[0] = []; // the 0-row of the terms array is the current (unexpanded) level
-	   this.Evaluate = Parse;
-	   this.Simplify = SimplifyTerms;
-	   this.unevaluatedString = termString; // the string meaning of this term
-	   this.equivalentTerms = new Array(); // array of variations to the unevaluatedString that are equal in meaning
-	   //this.Evaluate(termString);
-	   this.isNegative = false;
-	   this.multiplier = "1"; // treat as a string since a non-numeric term could possibly end up here
-	   this.exponent = new CTermNoExponent("1");	 // treat as a string since a non-numeric term could possibly end up here
-	}
 	
-	////////////////////////////////////////////////////////////////////////////////////
-	
-    function CTerm(termString, typeString)
+    function CTerm(termString, typeString, isNegative, exponentValue)
 	{
 	   //alert("Creating term " + termString);
 	   this.id = GenerateNewID(globalIDCounter);	   
 	   this.relationshipToPreviousTerm = "";
-	   this.relationshipToNextTerm = typeString;
+	   if (typeof(typeString) == "undefined")
+	   {
+	      this.relationshipToNextTerm = "none";
+	   }
+	   else
+	   {
+	      this.relationshipToNextTerm = typeString;
+	   }
 	   this.operation = "";
 	   this.withRespectTo = new Array();
 	   this.terms = new Array();
 	   //this.terms[0] = []; // the 0-row of the terms array is the current (unexpanded) level
 	   this.Evaluate = Parse;
+	   this.Unevaluate = Unparse;
 	   this.Simplify = SimplifyTerms;
 	   this.unevaluatedString = termString;
 	   this.equivalentTerms = new Array(); // array of variations to the unevaluatedString that are equal in meaning
 	   //this.Evaluate(termString);
-	   this.isNegative = false;
-	   this.isDenominator = false;
+	   if (typeof(isNegative) == "undefined")
+	   {
+	      this.isNegative = false;
+	   }
+	   else
+	   {
+	      this.isNegative = isNegative;
+	   }
 	   this.multiplier = "1"; // treat as a string since a non-numeric term could possibly end up here
-	   this.exponent = new CTermNoExponent("1");	 // treat as a string since a non-numeric term could possibly end up here
-	}	
-	
-	////////////////////////////////////////////////////////////////////////////////////
-	
-    function CTerm(termString, typeString, isNegative)
-	{
-	   //alert("Creating term " + termString);
-	   this.id = GenerateNewID(globalIDCounter);	   
-	   this.relationshipToPreviousTerm = "";
-	   this.relationshipToNextTerm = typeString;
-	   this.operation = "";
-	   this.withRespectTo = new Array();
-	   this.terms = new Array();
-	   //this.terms[0] = []; // the 0-row of the terms array is the current (unexpanded) level
-	   this.Evaluate = Parse;
-	   this.Simplify = SimplifyTerms;
-	   this.unevaluatedString = termString;
-	   this.equivalentTerms = new Array(); // array of variations to the unevaluatedString that are equal in meaning
-	   //this.Evaluate(termString);
-	   this.isNegative = isNegative;
-	   this.multiplier = "1"; // treat as a string since a non-numeric term could possibly end up here
-	   this.exponent = new CTermNoExponent("1");	 // treat as a string since a non-numeric term could possibly end up here
+	   
+	   if (typeof(exponentValue) == "undefined")
+	   {
+ 	      this.exponent = new CTermNoExponent("1");	 // treat as a string since a non-numeric term could possibly end up here	   
+	   }
+	   else
+	   {
+	      this.exponent = new CTermNoExponent(exponentValue);
+	   }
+	   
+	   // private methods
+	   this.PushTerm = PushTermFromBuffer;	   
 	}	

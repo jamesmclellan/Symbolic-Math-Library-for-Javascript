@@ -32,7 +32,20 @@
 		   //       iii. While the latch is high, copy terms into the array which will be simplified.
 		   //       iv. When the last term is found, set the latch back low, perform the simplification, and copy the results to the results array
 		   //    a. Look for strings of multiply/divide operations
-		   if (termInput.terms[i].relationshipToNextTerm == "multiply" ||
+		   //alert("Term " + termInput.terms[i].unevaluatedString + ", type = " + termInput.terms[i].relationshipToNextTerm);
+		   if (termInput.terms[i].withRespectTo.length > 0)
+		   {
+		      termInput.terms[i].Evaluate(termInput.terms[i].unevaluatedString); // evaluate the differential into individual terms; the parser moved the whole differential over
+		      termInput.terms[i].terms = PerformPartialDifferential(termInput.terms[i], termInput.terms[i].withRespectTo[0]);
+			  termInput.terms[i].unevaluatedString = Unparse(termInput.terms[i].terms); // unevaluate to get child's metadata into the parent term
+			  termInput.terms[i].terms = [];
+			  termInput.terms[i].Evaluate(termInput.terms[i].unevaluatedString); // perform a second evaluate to replace multiplier with real terms
+			  termInput.terms[i].withRespectTo = []; // clear the withRespectTo array (this will need to be corrected)
+			  // :TODO: Handle multiple differentials, example: dA/dxdy
+			  // :TODO: Keep the trailing part of the differential in the output, example: dx(A^2) = 2*A*dA/dx
+			  step3Terms.push(termInput.terms[i]);
+		   }
+		   else if (termInput.terms[i].relationshipToNextTerm == "multiply" ||
 		       termInput.terms[i].relationshipToNextTerm == "divide")
 		    {
 			   //alert("Added term " + termInput.terms[i].unevaluatedString + " to active terms");
@@ -60,14 +73,9 @@
 			}
 			// if we've come to the end of a string of multiplication/division operators, then it is time to work on
 			//    the given string/array, then reset for the next possible string
-			else if (bMultiplyDivideLatch)
-			{	
-               // :TODO: This branch may be unnecessary. Investigate and remove.			
-			   // :NOTE: The "i" index term has not yet been pushed onto the finalTerms array
-			   //        that will happen later
-			} 
 			else if (!bMultiplyDivideLatch)
 			{
+			   //alert("Blah2");
 			   step3Terms.push(termInput.terms[i]);
 			} // end of multiplication-division handling subsection
 	   } // done with term loop
@@ -75,6 +83,7 @@
 	   if (activeTerms.length > 0) {	   
 	       //alert("Called here too!");			
 		   simplifiedTerms = SimplifyMultiplicationDivision(activeTerms);	
+		   //alert("Simplify multi/div returned " + unresolvedTerms.length + " terms");
            var myTerm = PackageMultDivReturnValue( simplifiedTerms, "none" );		   
 		   //alert("Simplify mult/div returned " + unresolvedTerms.length + " terms");
 		   step3Terms = step3Terms.push(myTerm);
@@ -84,7 +93,9 @@
 	   //alert("About to call add/sub with " + step3Terms.length + " terms. Term [0] = " + step3Terms[0].unevaluatedString);
        step4Terms = SimplifyAdditionSubtraction(step3Terms);
 	   //alert("Simplify add/sub returned " + step4Terms.length + " terms");
+	   //alert("Simplify returned " + step4Terms[0].isNegative);
 	   PushToFinal(finalTerms, step4Terms);
+	   //alert("PushToFinal returned " + finalTerms[0].isNegative);
 	   if (finalTerms.length > 0)
 	   {
 	      finalTerms[finalTerms.length - 1].relationshipToNextTerm = "none";
@@ -182,34 +193,7 @@
               CancelAdditionSubtractionTerms(additionTerms, subtractionTerms, step3Terms);   			  
 		}
 		  
-  	    // put addition term array	  
-	    for (var j = 0; j < additionTerms.length; j++)
-	    {
-		    if (additionTerms[j] != null)
-		    {
-			   //alert("Pushing add term " + additionTerms[j].unevaluatedString);
-			   var closestPrevious = GetClosestPreviousValue(additionTerms, j);
-			   if (closestPrevious >= 0)
-			   { 
-  			     additionTerms[closestPrevious].relationshipToNextTerm = "addition";
-			   }
-			   simplifiedTerms.push(additionTerms[j]);
-		    }
-	    }	   
-	    // put subtraction term array
-	    for (var j = 0; j < subtractionTerms.length; j++)
-	    {
-		    if (subtractionTerms[j] != null)
-		    {
-			   //alert("Pushing sub term " + subtractionTerms[j].unevaluatedString);
-			   var closestPrevious = GetClosestPreviousValue(subtractionTerms, j);
-			   if (closestPrevious >= 0)
-			   {
-			     subtractionTerms[closestPrevious].relationshipToNextTerm = "subtraction";
-			   }
-   			   simplifiedTerms.push(subtractionTerms[j]);
-		    }
-	    }	   	  
+        CollectAdditionSubtractionTerms(additionTerms, subtractionTerms, simplifiedTerms);	
 	  
 	    // if all terms cancel between numerators and denominators, then push a "1" to the output
 	    if (simplifiedTerms.length == 0)
@@ -222,6 +206,124 @@
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////
+	
+	function CollectAdditionSubtractionTerms(additionTerms, subtractionTerms, simplifiedTerms)
+	{
+  	    // put addition term array	  
+	    for (var j = 0; j < additionTerms.length; j++)
+	    {
+		    
+		    for (var k = j+1; k < additionTerms.length; k++)
+			{
+				if (additionTerms[j] != null && additionTerms[k] != null && 
+				    IsANumber(additionTerms[j]) && IsANumber(additionTerms[k]))
+				{
+					var val1 = parseFloat(additionTerms[j].unevaluatedString);
+					var val2 = parseFloat(additionTerms[k].unevaluatedString);
+					
+					var valResult = val1 + val2;
+					additionTerms[j].unevaluatedString = "" + valResult + "";
+					DeleteFromArray(additionTerms, additionTerms[k].id);				
+				}
+				
+				if (additionTerms[j] != null && additionTerms[k] != null && 
+				    (additionTerms[j].unevaluatedString == additionTerms[k].unevaluatedString))
+				{
+					var val1 = parseFloat(additionTerms[j].multiplier);
+					var val2 = parseFloat(additionTerms[k].multiplier);
+					
+					var valResult = val1 + val2;
+					additionTerms[j].multiplier = "" + valResult + "";
+					DeleteFromArray(additionTerms, additionTerms[k].id);				
+				}				
+			}
+		    
+           if (additionTerms[j] != null)
+           {		   
+			   //alert("Pushing add term " + additionTerms[j].unevaluatedString);
+			   var closestPrevious = GetClosestPreviousValue(additionTerms, j);
+			   if (closestPrevious >= 0)
+			   { 
+				 additionTerms[closestPrevious].relationshipToNextTerm = "addition";
+			   }
+			   if ( parseFloat(additionTerms[j].multiplier) > 1)
+			   {
+			      var myTerm = new CTerm(additionTerms[j].multiplier, "multiply");
+				  simplifiedTerms.push(myTerm);
+			   }
+			   simplifiedTerms.push(additionTerms[j]);			
+		   }
+	    }	
+		
+	    // put subtraction term array
+	    for (var j = 0; j < subtractionTerms.length; j++)
+	    {
+		    
+		    for (var k = j+1; k < subtractionTerms.length; k++)
+			{
+			   if (subtractionTerms[j] != null && subtractionTerms[k] != null &&
+			       IsANumber(subtractionTerms[j]) && IsANumber(subtractionTerms[k]))
+			   {
+					var val1 = parseFloat(subtractionTerms[j].unevaluatedString);
+					var val2 = parseFloat(subtractionTerms[k].unevaluatedString);
+					
+					var valResult = val1 + val2;
+					subtractionTerms[j].unevaluatedString = "" + valResult + "";
+					DeleteFromArray(subtractionTerms, subtractionTerms[k].id);	
+		       }
+				if (subtractionTerms[j] != null && subtractionTerms[k] != null && 
+				    (subtractionTerms[j].unevaluatedString == subtractionTerms[k].unevaluatedString))
+				{
+					var val1 = parseFloat(subtractionTerms[j].multiplier);
+					var val2 = parseFloat(subtractionTerms[k].multiplier);
+					
+					var valResult = val1 + val2;
+					subtractionTerms[j].multiplier = "" + valResult + "";
+					DeleteFromArray(subtractionTerms, subtractionTerms[k].id);				
+				}							   
+			}
+			
+			
+		    if (subtractionTerms[j] != null)
+		    {
+			   //alert("Pushing sub term " + subtractionTerms[j].unevaluatedString);
+			   var closestPrevious = GetClosestPreviousValue(subtractionTerms, j);
+			   if (closestPrevious >= 0)
+			   {
+			     subtractionTerms[closestPrevious].relationshipToNextTerm = "subtraction";
+			   }
+			   if ( parseFloat(subtractionTerms[j].multiplier) > 1)
+			   {
+			      var myTerm = new CTerm(subtractionTerms[j].multiplier, "multiply");
+				  simplifiedTerms.push(myTerm);
+			   }			   
+   			   simplifiedTerms.push(subtractionTerms[j]);
+		    }
+	    }	 
+		
+		if ((simplifiedTerms.length == 1) && (CountNonNull(subtractionTerms) > 0))
+		{
+		   //alert("Only one subtraction term. Making this term negative");
+		   simplifiedTerms[0].isNegative = true;
+		}		
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////////
+	
+	function CountNonNull( arrayIn )
+	{
+	  var returnValue = 0;
+	  for (var i = 0; i < arrayIn.length; i++)
+	  {
+	     if (arrayIn[i] != null)
+		 {
+		    returnValue++;
+		 }
+	  }
+	  return returnValue;
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////////	
 	
 	function SimplifyMultiplicationDivision(activeTerms)
 	{
@@ -237,6 +339,9 @@
           CancelMultiplicationDivision(numeratorTerms, denominatorTerms, activeTerms);  
 	   } // end if divide terms in array
 	   
+	   // collect remainin numerators and denominators, increasing exponents appropriately
+	   CollectNumeratorDenominatorExponents(numeratorTerms, denominatorTerms, activeTerms);  
+	   
 	   // ii. Is there a multiply-by-zero anywhere in the term? simplify to "0"
 	   if (IsZeroInTermArray(numeratorTerms))
 	   {
@@ -246,8 +351,18 @@
 	   }
 	   else
 	   {
-	      //alert("Collecting remaining activeTerms. Length = " + activeTerms.length );
-		  
+	      //alert("Collecting remaining activeTerms. Length = " + activeTerms.length );		  
+          CollectNumeratorDenominatorTerms(simplifiedTerms, numeratorTerms, denominatorTerms);
+	   }	
+	   
+	   //alert("Return value = " + simplifiedTerms[0].unevaluatedString );
+	   return(simplifiedTerms);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////
+
+    function CollectNumeratorDenominatorTerms(resultArray, numeratorTerms, denominatorTerms)
+    {
 		  // if there is not a zero, then push surviving numerators and denominators
 		  for (var j = 0; j < numeratorTerms.length; j++)
 		  {
@@ -255,20 +370,20 @@
 			 {
 			    //alert("Pushing term " + numeratorTerms[j].unevaluatedString);
 				numeratorTerms[j].relationshipToNextTerm = "multiply";
-				simplifiedTerms.push(numeratorTerms[j]);
+				resultArray.push(numeratorTerms[j]);
 			 }
 		  }
-		  var lastTerm = (simplifiedTerms.length) - 1;
+		  var lastTerm = (resultArray.length) - 1;
 		  
 		  if (lastTerm >= 0)
 		  {
 			  if (CountArrayNotNull(denominatorTerms) > 0)
 			  {
-				 simplifiedTerms[lastTerm].relationshipToNextTerm = "divide";
+				 resultArray[lastTerm].relationshipToNextTerm = "divide";
 			  }
 			  else
 			  {
-				 simplifiedTerms[lastTerm].relationshipToNextTerm = "none";
+				 resultArray[lastTerm].relationshipToNextTerm = "none";
 			  }
 		  }
 		  
@@ -282,21 +397,17 @@
 			 {
 			    //alert("Pushing term " + denominatorTerms[j].unevaluatedString);
 				denominatorTerms[j].relationshipToNextTerm = "none";
-				simplifiedTerms.push(denominatorTerms[j]);
+				resultArray.push(denominatorTerms[j]);
 			 }
 		  }		  
-		  //alert("Result of simplification " + simplifiedTerms.length + " items. ");
+		  //alert("Result of simplification " + resultArray.length + " items. ");
 		  // if all terms cancel between numerators and denominators, then push a "1" to the output
-		  if (simplifiedTerms.length == 0)
+		  if (resultArray.length == 0)
 		  {
-			simplifiedTerms.push(new CTerm("1", "none"));
-			//alert("Adding unit term to results, value = " + simplifiedTerms[0].unevaluatedString );
-		  }
-	   }	
-	   //alert("Return value = " + simplifiedTerms[0].unevaluatedString );
-	   return(simplifiedTerms);
-	}
-		
+			resultArray.push(new CTerm("1", "none"));
+			//alert("Adding unit term to results, value = " + resultArray[0].unevaluatedString );
+		  }	
+    }	
 	
 	////////////////////////////////////////////////////////////////////////////////////
 	
@@ -304,10 +415,16 @@
 	{
 	   for (var i = 0; i < step4Terms.length; i++)
 	   {
-	     if (step4Terms[i].terms.length > 0)
+	     if (step4Terms[i].terms.length > 1)
 		 {
 			 for (var j = 0; j < step4Terms[i].terms.length; j++)
 			 {
+			   // if this is the last subterm, give it the relationship of the parent
+			   if (j == (step4Terms[i].terms.length - 1))
+			   {
+			      step4Terms[i].terms[j].relationshipToNextTerm = step4Terms[i].relationshipToNextTerm;
+			   }
+			   
 			   //alert("Pushing to final sub-term " + step4Terms[i].terms[j].unevaluatedString);
 			   finalTerms.push(step4Terms[i].terms[j]);
 			 }
@@ -324,6 +441,7 @@
 	
     function CancelAdditionSubtractionTerms(additionTerms, subtractionTerms, termArray)
 	{
+	      //alert("Cancelling addition and subtraction terms");
 		  for (var j = 0; j < subtractionTerms.length; j++)
 		  {
 			for (var k = 0; k < additionTerms.length; k++)
@@ -344,13 +462,32 @@
 					   // break to next denominator
 					   break;			
 					} 
-					else if(IsANumber(subtractionTerms[j].unevaluatedString) && IsANumber(additionTerms[k].unevaluatedString))
+					else if(IsANumber(subtractionTerms[j]) && IsANumber(additionTerms[k]))
 					{
 					   // check to see if the two terms are constants, if so, just add them
-					   SubtractConstant(subtractionTerms[j], parseFloat(additionTerms[k].unevaluatedString));
-					   DeleteFromArray(termArray, additionTerms[k].id);		
-					   DeleteFromArray(additionTerms, additionTerms[k].id);	
-					   // how to handle sign change on the subtractionTerm???
+					   //alert("Subtracting two constants");
+					   var resultsTerm = parseFloat(additionTerms[k].unevaluatedString) - parseFloat(subtractionTerms[j].unevaluatedString);
+					   if (resultsTerm > 0)
+					   {
+					      DeleteFromArray(termArray, subtractionTerms[k].id);		
+					      DeleteFromArray(subtractionTerms, subtractionTerms[k].id);
+						  additionTerms[k].unevaluatedString = "" + resultsTerm + "";
+						  break;
+					   }
+					   else if (resultsTerm < 0)
+					   {
+					      DeleteFromArray(termArray, additionTerms[k].id);		
+					      DeleteFromArray(additionTerms, additionTerms[k].id);	
+						  subtractionTerms[j].unevaluatedString = "" + (-1 * resultsTerm) + "";
+					   }
+					   else 
+					   {
+					      DeleteFromArray(termArray, additionTerms[k].id);		
+					      DeleteFromArray(additionTerms, additionTerms[k].id);	
+					      DeleteFromArray(termArray, subtractionTerms[k].id);		
+					      DeleteFromArray(subtractionTerms, subtractionTerms[k].id);
+						  break;
+					   }
 					}
 					else 
 					{
@@ -402,10 +539,25 @@
 		  {
 			 for (var k = 0; k < numeratorTerms.length; k++)
 			 {
-				if (denominatorTerms[j].unevaluatedString == numeratorTerms[k].unevaluatedString)
+				if ( denominatorTerms[j] != null && numeratorTerms[k] != null &&
+				   denominatorTerms[j].unevaluatedString == numeratorTerms[k].unevaluatedString)
 				{
 				   // subtract and add exponents
-				   AddConstant(denominatorTerms[j].exponent, numeratorTerms[k].exponent)
+				   var numeratorExponent = numeratorTerms[k].exponent;
+				   var denominatorExponent = denominatorTerms[j].exponent;
+				   var resultExponent = 0;
+                   // if both exponents are constants, perform subtraction, otherwise do nothing
+				   if (IsANumber(numeratorExponent) && IsANumber(denominatorExponent))
+				   {
+				      var numeratorExponentValue = parseFloat(numeratorExponent.unevaluatedString);
+					  var denominatorExponentValue = parseFloat(denominatorExponent.unevaluatedString);
+					  
+					  resultExponent = numeratorExponentValue - denominatorExponentValue;
+				   }
+				   else
+				   {
+				      continue;
+				   }
 				   
 				   // preserve the sign of the pair to be deleted -- if it is negative, then push a "-1" onto the numerators stack
 				   if (denominatorTerms[j].isNegative != numeratorTerms[k].isNegative)
@@ -417,20 +569,106 @@
 				   //alert("Deleting term '" + denominatorTerms[j].unevaluatedString + "' from denominator term array. ID = " + denominatorTerms[j].id);
 				   //alert("Deleting term '" + numeratorTerms[k].unevaluatedString + "' from numerator term array. ID = " + numeratorTerms[k].id);
 				   // delete from the activeTerms array
-				   DeleteFromArray(activeTerms, denominatorTerms[j].id);
-				   DeleteFromArray(activeTerms, numeratorTerms[k].id);					   
-				   
-				   // delete from the numeratorTerms and denominatorTerms array
-				   DeleteFromArray(denominatorTerms, denominatorTerms[j].id);
-				   DeleteFromArray(numeratorTerms, numeratorTerms[k].id);					   
-				   
-				   // break to next denominator
-				   break;
+				   if (resultExponent > 0)
+				   {
+				      DeleteFromArray(activeTerms, denominatorTerms[j].id);
+					  DeleteFromArray(denominatorTerms, denominatorTerms[j].id);
+                      numeratorTerms[k].exponent.unevaluatedString = "" + resultExponent + "";
+					  break;
+				   }
+				   else if (resultExponent < 0)
+				   {
+				      DeleteFromArray(activeTerms, numeratorTerms[k].id);
+					  DeleteFromArray(numeratorTerms, numeratorTerms[k].id);
+					  denominatorTerms[j].exponent.unevaluatedString = "" + resultExponent + "";
+				   }
+				   else 
+				   {
+				      DeleteFromArray(activeTerms, denominatorTerms[j].id);
+					  DeleteFromArray(denominatorTerms, denominatorTerms[j].id);
+				      DeleteFromArray(activeTerms, numeratorTerms[k].id);
+					  DeleteFromArray(numeratorTerms, numeratorTerms[k].id);
+					  break;
+				   }
 				} 
+				else if ( IsANumber(denominatorTerms[j]) && IsANumber(numeratorTerms[k]) )
+				{
+				   var val1 = parseFloat(numeratorTerms[k].unevaluatedString);
+				   var val2 = parseFloat(denominatorTerms[j].unevaluatedString);
+				   
+				   var valResult = val1 / val2;
+				   numeratorTerms[k].unevaluatedString = "" + valResult + "";
+				   DeleteFromArray(activeTerms, denominatorTerms[j].id);
+				   DeleteFromArray(denominatorTerms, denominatorTerms[j].id);
+                   break;				   
+				}
 			 } // end of numerator loop
 		  } // end of denominator loop	
 	}
 	
+	////////////////////////////////////////////////////////////////////////////////////
+	
+	function CollectNumeratorDenominatorExponents(numeratorTerms, denominatorTerms, activeTerms)
+	{
+	   for (var j = 0; j < denominatorTerms.length; j++)
+	   {
+	      for (var k = j+1; k < denominatorTerms.length; k++)
+		  {
+		     if ( ((denominatorTerms[j] != null) && (denominatorTerms[k] != null)) && (denominatorTerms[j].unevaluatedString == denominatorTerms[k].unevaluatedString) &&
+			      (IsANumber(denominatorTerms[j].exponent) && IsANumber(denominatorTerms[k].exponent)) )
+			 {
+			    var exp1 = parseFloat(denominatorTerms[j].exponent.unevaluatedString);
+				var exp2 = parseFloat(denominatorTerms[k].exponent.unevaluatedString);
+				
+				var expResult = exp1 + exp2;
+				denominatorTerms[j].exponent.unevaluatedString = "" + expResult + "";
+				DeleteFromArray(activeTerms, denominatorTerms[k].id);
+			    DeleteFromArray(denominatorTerms, denominatorTerms[k].id);
+			 }
+			 else if ( ((denominatorTerms[j] != null) && (denominatorTerms[k] != null)) 
+			    && IsANumber(denominatorTerms[j]) && IsANumber(denominatorTerms[k]))
+			 {
+			    var val1 = parseFloat(denominatorTerms[j].unevaluatedString);
+				var val2 = parseFloat(denominatorTerms[k].unevaluatedString);
+				
+				var valResult = val1 * val2;
+				denominatorTerms[j].unevaluatedString = "" + valResult + "";
+				DeleteFromArray(activeTerms, denominatorTerms[k].id);
+			    DeleteFromArray(denominatorTerms, denominatorTerms[k].id);			    
+			 }
+		  }
+	   }
+	   
+	   for (var j = 0; j < numeratorTerms.length; j++)
+	   {
+	      for (var k = j+1; k < numeratorTerms.length; k++)
+		  {
+		     
+		     if ( ((numeratorTerms[j] != null) && (numeratorTerms[k] != null)) && (numeratorTerms[j].unevaluatedString == numeratorTerms[k].unevaluatedString) &&
+			      (IsANumber(numeratorTerms[j].exponent) && IsANumber(numeratorTerms[k].exponent)) )
+			 {
+			    var exp1 = parseFloat(numeratorTerms[j].exponent.unevaluatedString);
+				var exp2 = parseFloat(numeratorTerms[k].exponent.unevaluatedString);
+				
+				var expResult = exp1 + exp2;
+				numeratorTerms[j].exponent.unevaluatedString = "" + expResult + "";
+				DeleteFromArray(activeTerms, numeratorTerms[k].id);
+			    DeleteFromArray(numeratorTerms, numeratorTerms[k].id);
+			 }
+			 else if ( ((numeratorTerms[j] != null) && (numeratorTerms[k] != null)) && 
+			    IsANumber(numeratorTerms[j]) && IsANumber(numeratorTerms[k]) )
+			 {
+			    var val1 = parseFloat(numeratorTerms[j].unevaluatedString);
+				var val2 = parseFloat(numeratorTerms[k].unevaluatedString);
+				
+				var valResult = val1 * val2;
+				numeratorTerms[j].unevaluatedString = "" + valResult + "";
+				DeleteFromArray(activeTerms, numeratorTerms[k].id);
+			    DeleteFromArray(numeratorTerms, numeratorTerms[k].id);			    
+			 }			 
+		  }
+	   }
+	}
 	
 	////////////////////////////////////////////////////////////////////////////////////
 	
@@ -627,7 +865,7 @@
 	
 	function IsANumber(termIn)
 	{
-	   if (IsNaN(parseFloat(termIn.unevaluatedString)))
+	   if (isNaN(parseFloat(termIn.unevaluatedString)) || termIn.terms.length > 1)
 	   {
 	      return false;
 	   }
@@ -641,6 +879,12 @@
 	
 	function AddConstant(termIn, constantIn)
 	{
+	   // update the terms in termIn (if they haven't been updated already)
+	   if (termIn.terms.length == 0)
+	   {
+	      termIn.Evaluate(termIn.unevaluatedString);
+	   }
+	   
 	   for (var i=0; i < termIn.terms.length; i++)
 	   {
 	      if (IsANumber(termIn.terms[i]))
@@ -650,9 +894,9 @@
 	   }
 	   if (i < termIn.terms.length)
 	   {
-	      var originalValue = parseFloat(termIn.terms[i]);
+	      var originalValue = parseFloat(termIn.terms[i].unevaluatedString);
 		  originalValue += constantIn;
-		  termIn.terms[i] = "" + originalValue + "";
+		  termIn.terms[i].unevaluatedString = "" + originalValue + "";
 	   }
 	   else 
 	   {
@@ -660,12 +904,20 @@
 		  termIn.terms[i-1].relationshipToNextTerm = "addition";
 		  termIn.terms.push(myTerm);
 	   }
+	   
+	   termIn.unevaluatedString = termIn.Unevaluate(termIn.terms);
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////	
 	
 	function SubtractConstant(termIn, constantIn)
 	{
+	   // update the terms in termIn (if they haven't been updated already)
+	   if (termIn.terms.length == 0)
+	   {
+	      termIn.Evaluate(termIn.unevaluatedString);
+	   }
+	   
 	   for (var i=0; i < termIn.terms.length; i++)
 	   {
 	      if (IsANumber(termIn.terms[i]))
@@ -675,9 +927,9 @@
 	   }
 	   if (i < termIn.terms.length)
 	   {
-	      var originalValue = parseFloat(termIn.terms[i]);
+	      var originalValue = parseFloat(termIn.terms[i].unevaluatedString);
 		  originalValue -= constantIn;
-		  termIn.terms[i] = "" + originalValue + "";
+		  termIn.terms[i].unevaluatedString = "" + originalValue + "";
 	   }
 	   else 
 	   {
@@ -685,4 +937,6 @@
 		  termIn.terms[i-1].relationshipToNextTerm = "subtraction";
 		  termIn.terms.push(myTerm);
 	   }
+	   
+	   termIn.unevaluatedString = termIn.Unevaluate(termIn.terms);
 	}	
