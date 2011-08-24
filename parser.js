@@ -335,7 +335,7 @@
 						this.buffer = ""; // clear the buffer
 						//alert("Clearing buffer in C");	
 						newStart = i + 7 + endOfParen + 1;
-						i = newStart;
+						i = newStart-1;
 					} 
 					else if (IsDiv(stringIn, i+7))
 					{
@@ -362,6 +362,48 @@
 					   newStart = i+7;
 					   i = newStart;
 					}
+				}
+				else 
+				{
+					if (IsParen(stringIn, i+6))
+					{
+						//            (a) if there is, grab the whole term and push it onto the terms array				   
+					    var endOfParen = identifyNestedParen(stringIn, i+6);
+			            // b. push the paren group onto the terms array
+			            var subTerm = stringIn.substring(i+7, endOfParen+i+6);
+			            var tempTerm = new CTerm(subTerm);
+						tempTerm.withRespectTo.push(stringIn.charAt(endOfParen+i+6+8));
+			            this.terms.push(tempTerm);
+						this.buffer = ""; // clear the buffer
+						//alert("Clearing buffer in C");	
+						newStart = i + 6 + endOfParen + 9;
+						i = newStart;
+					} 
+					else if (IsDiv(stringIn, i+6))
+					{
+						//      2. look to see if there is a division sybol next
+						//            (b) if there is, look to see if there's a partial differential term next
+						var k = 0;
+						var tempTerm = new CTerm(stringIn.charAt(i+5));							
+						while (IsDiff(stringIn, i+7+k))
+						{
+							//                (i) look for multiple partial differentials; push each one onto the "withRespectTo" array
+							tempTerm.withRespectTo.push(stringIn.charAt(i+7+k+6));
+							//alert("Found partial term '" + stringIn.charAt(i+8+k+6) + "'");
+							k = k+6;
+							newStart = i+7+k;
+							//i = newStart;
+							//alert("Next term '" + stringIn.charAt(i+8+k) + "'");
+						}
+						i = newStart;
+                        this.PushTerm(tempTerm);
+						//alert("Clearing buffer in D");	
+					}
+					else
+					{
+					   newStart = i+6;
+					   i = newStart;
+					}				
 				}
 			}
 			
@@ -400,17 +442,25 @@
 			   var type = DetermineMulDivType(stringIn, i);
 			   //    ii. set the next term's "relationshipToPreviousTerm" to "multiplication" or "division"
 			   //var subTerm = stringIn.substring(newStart, i );
-			   var tempTerm = new CTerm(this.buffer, type, nextTermIsNegative);
-			   tempTerm.isParenthetical = nextTermIsParenthetical;
-			   nextTermIsNegative = false;
-			   nextTermIsParenthetical = false;
-               this.PushTerm(tempTerm);
+			   if (this.buffer.length > 0)
+			   {
+			      // if a term is in the buffer, push it to the terms array
+			      var tempTerm = new CTerm(this.buffer, type, nextTermIsNegative);
+			      tempTerm.isParenthetical = nextTermIsParenthetical;
+			      nextTermIsNegative = false;
+			      nextTermIsParenthetical = false;
+                  this.PushTerm(tempTerm);
+			   }
+			   else if (this.terms.length > 0)
+			   {
+			      this.terms[this.terms.length-1].relationshipToNextTerm = type;
+			   }
 			   //    iii. do not get the next term
 			   //    iv. skip i to where the * or / was found
 			   if (type == "multiply") 
 			   {
 			      newStart = i + 5;
-				  i = newStart;
+				  i = newStart - 1;
 			   }
 			   else
 			   {
@@ -443,7 +493,7 @@
 		var tempString = Unparse(this.terms);
 		if (tempString != this.unevaluatedString)
 		{
-		  // alert ("PARSE REDUNDANCY CHECK ERROR: Unparse returned " + tempString + " after parsing input " + this.unevaluatedString);
+		  alert ("PARSE REDUNDANCY CHECK ERROR: Unparse returned " + tempString + " after parsing input " + this.unevaluatedString);
 		}
 	}
 

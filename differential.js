@@ -60,7 +60,10 @@
 		  */
 		  
 		  var retValues = PerformSimplePartialDifferential(termInput.terms[i], withRespectTo);	
-		  step3Terms.push(retValues);
+		  for (var i = 0; i < retValues.length; i++)
+		  {
+		     step3Terms.push(retValues[i]);
+		  }
 	   } // done with term loop
 	   
 	   /*
@@ -99,29 +102,36 @@
       // assumes only one term
       var expValue = parseFloat(termInput.exponent.unevaluatedString);
 	  var mulValue = parseFloat(termInput.multiplier);
-	  var resultTerm = "";
+	  var root = termInput.unevaluatedString;
+	  var resultTerm = [];
 	  
 	  expValue -= 1;
 	  
 	  if (expValue == 0 && (termInput.unevaluatedString == withRespectTo))
 	  {
 	     var myTerm = new CTerm("1");
-		 resultTerm = myTerm;
+		 resultTerm.push(myTerm);
 	  }	  
 	  else if ( IsANumber(termInput) )
 	  {
 	 	 var myTerm = new CTerm("0");
-		 resultTerm = myTerm; 
+		 resultTerm.push(myTerm); 
 	  }
 	  else if ( (expValue > 0) || (expValue < 0) )
 	  {
 	     mulValue *= (expValue + 1);
 		 termInput.multiplier = "" + mulValue + "";
 		 termInput.exponent.unevaluatedString = "" + expValue + "";
-         resultTerm = termInput;		 
+		 var tmpTerm =  new CTerm( "&part;" + root + "/&part;" + withRespectTo );
+		 //tmpTerm.withRespectTo.push(withRespectTo);
+		 //tmpTerm.unevaluatedString = Unparse(tmpTerm.terms);
+		 tmpTerm.relationshipToNextTerm = termInput.relationshipToNextTerm;
+		 termInput.relationshipToNextTerm = "multiply";
+         resultTerm.push(termInput);		 
+		 resultTerm.push(tmpTerm);
 	  } else {
 	     termInput.withRespectTo.push(withRespectTo);
-	     resultTerm = termInput;
+	     resultTerm.push(termInput);
 	  }
 	  
 	  return resultTerm;

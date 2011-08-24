@@ -35,6 +35,9 @@
 		   //alert("Term " + termInput.terms[i].unevaluatedString + ", type = " + termInput.terms[i].relationshipToNextTerm);
 		   if (termInput.terms[i].isParenthetical)
 		   {
+		      // if we're about to push on the array, flush the existing activeterms array
+			  FlushActiveTerms(activeTerms, simplifiedTerms, step3Terms, "multiply");
+			  
 		      termInput.terms[i].Evaluate(termInput.terms[i].unevaluatedString);
 		      var resultTerm = new CTerm("");
 		      resultTerm.terms = SimplifyTerms(termInput.terms[i]);
@@ -43,6 +46,9 @@
 		   }
 		   else if (termInput.terms[i].withRespectTo.length > 0)
 		   {
+		      // if we're about to push on the array, flush the existing activeterms array
+			  //FlushActiveTerms(activeTerms, simplifiedTerms, step3Terms, "multiply");
+			  
 		      termInput.terms[i].Evaluate(termInput.terms[i].unevaluatedString); // evaluate the differential into individual terms; the parser moved the whole differential over
 		      termInput.terms[i].terms = PerformPartialDifferential(termInput.terms[i], termInput.terms[i].withRespectTo[0]);
 			  termInput.terms[i].unevaluatedString = Unparse(termInput.terms[i].terms); // unevaluate to get child's metadata into the parent term
@@ -51,7 +57,8 @@
 			  termInput.terms[i].withRespectTo = []; // clear the withRespectTo array (this will need to be corrected)
 			  // :TODO: Handle multiple differentials, example: dA/dxdy
 			  // :TODO: Keep the trailing part of the differential in the output, example: dx(A^2) = 2*A*dA/dx
-			  step3Terms.push(termInput.terms[i]);
+			  //step3Terms.push(termInput.terms[i]);
+			  activeTerms.push(termInput.terms[i]);
 		   }
 		   else if (termInput.terms[i].relationshipToNextTerm == "multiply" ||
 		       termInput.terms[i].relationshipToNextTerm == "divide")
@@ -88,14 +95,7 @@
 			} // end of multiplication-division handling subsection
 	   } // done with term loop
 	   
-	   if (activeTerms.length > 0) {	   
-	       //alert("Called here too!");			
-		   simplifiedTerms = SimplifyMultiplicationDivision(activeTerms);	
-		   //alert("Simplify multi/div returned " + unresolvedTerms.length + " terms");
-           var myTerm = PackageMultDivReturnValue( simplifiedTerms, "none" );		   
-		   //alert("Simplify mult/div returned " + unresolvedTerms.length + " terms");
-		   step3Terms = step3Terms.push(myTerm);
-	   }
+       FlushActiveTerms(activeTerms, simplifiedTerms, step3Terms, "none");
 
 	   // 4. handle addition/subtraction
 	   //alert("About to call add/sub with " + step3Terms.length + " terms. Term [0] = " + step3Terms[0].unevaluatedString);
@@ -112,6 +112,24 @@
 	   return finalTerms;
 	}
 
+    ////////////////////////////////////////////////////////////////////////////////////
+
+    function FlushActiveTerms(activeTerms, simplifiedTerms, step3Terms, relation)
+    {
+	   if (activeTerms.length > 0) {	   
+	       //alert("Called here too!");			
+		   simplifiedTerms = SimplifyMultiplicationDivision(activeTerms);	
+		   //alert("Simplify multi/div returned " + unresolvedTerms.length + " terms");
+           var myTerm = PackageMultDivReturnValue( simplifiedTerms, relation );		   
+		   //alert("Simplify mult/div returned " + unresolvedTerms.length + " terms");
+		   step3Terms.push(myTerm);
+		   while(activeTerms.length > 0)
+		   {
+		      activeTerms.pop();
+		   }
+	   }	
+    }	
+	
     ////////////////////////////////////////////////////////////////////////////////////
 	
 	function PackageMultDivReturnValue( valueToPackage, type )
