@@ -52,6 +52,11 @@
 	   
 	   // private methods
 	   this.PushTerm = PushTermFromBuffer;
+	   this.ParseAdd = ParseAddSubtract;
+	   this.ParseMul = ParseMultiplicationDivision;
+	   this.ParsePar = ParseParen;
+	   this.ParseDiff = ParseDifferential;
+	   this.ParseExp = ParseExponent;
 	}	
 	
 	////////////////////////////////////////////////////////////////////////////////////
@@ -100,5 +105,10 @@
 	   }
 	   
 	   // private methods
-	   this.PushTerm = PushTermFromBuffer;	   
+	   this.PushTerm = PushTermFromBuffer;
+	   this.ParseAdd = ParseAddSubtract;
+	   this.ParseMul = ParseMultiplicationDivision;
+	   this.ParsePar = ParseParen;
+	   this.ParseDiff = ParseDifferential;
+	   this.ParseExp = ParseExponent;  
 	}	

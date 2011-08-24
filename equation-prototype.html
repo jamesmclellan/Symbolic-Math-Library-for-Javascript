@@ -78,13 +78,13 @@
 		
 		DoTest("A&dot;B-A&dot;B", [new CTerm("A", "multiply"), new CTerm("B", "subtraction"), new CTerm("A", "multiply"), new CTerm("B", "none")]);
 
-		DoTest("(A+B)-C+(D+E)",[new CTerm("(A+B)", "subtraction"), new CTerm("C", "addition"), new CTerm("(D+E)", "none")]);
-		DoTest("(A&dot;(B+C)-D)+E+(F&dot;((G+1)/H))", [new CTerm("(A&dot;(B+C)-D)", "addition"), new CTerm("E", "addition"), new CTerm("(F&dot;((G+1)/H))", "none")]);
+		DoTest("(A+B)-C+(D+E)",[new CTerm("A+B", "subtraction"), new CTerm("C", "addition"), new CTerm("D+E", "none")]);
+		DoTest("(A&dot;(B+C)-D)+E+(F&dot;((G+1)/H))", [new CTerm("A&dot;(B+C)-D", "addition"), new CTerm("E", "addition"), new CTerm("F&dot;((G+1)/H)", "none")]);
 		
 		DoTest("A<sup>B</sup>", [new CTerm("A", "none", false, "B")]);
 		DoTest("A<sup>-B</sup>", [new CTerm("A", "none", false, "-B")]);
-		DoTest("A<sup>B</sup>-(C&dot;D)/E", [new CTerm("A", "subtraction", false, "B"), new CTerm("(C&dot;D)", "divide"), new CTerm("E", "none")]);
-		DoTest("A<sup>-B</sup>-(C&dot;D)/E", [new CTerm("A", "subtraction", false, "-B"), new CTerm("(C&dot;D)", "divide"), new CTerm("E", "none")]);
+		DoTest("A<sup>B</sup>-(C&dot;D)/E", [new CTerm("A", "subtraction", false, "B"), new CTerm("C&dot;D", "divide"), new CTerm("E", "none")]);
+		DoTest("A<sup>-B</sup>-(C&dot;D)/E", [new CTerm("A", "subtraction", false, "-B"), new CTerm("C&dot;D", "divide"), new CTerm("E", "none")]);
 		
 		DoTestDiff("&part;A/&part;x", ["A"], ["x"]);
 		DoTestDiff("&part;A/&part;x&part;t", ["A"], ["x", "t"]);
@@ -125,19 +125,23 @@
 		
 		SimplifyTest(new CTerm("2&dot;3"), [new CTerm("6", "none", false)]);
 		SimplifyTest(new CTerm("2&dot;B&dot;3"), [new CTerm("6", "multiply", false), new CTerm("B", "none", false)]);
-		*/
-		//SimplifyTest(new CTerm("6/2"), [new CTerm("3", "none", false)]);
 		
-		//SimplifyTest(new CTerm("1+B-3"), [new CTerm("B", "subtraction", false), new CTerm("2", "none", false)]);
+		SimplifyTest(new CTerm("6/2"), [new CTerm("3", "none", false)]);
 		
-		//SimplifyTest(new CTerm("A&dot;B-B&dot;A"), [new CTerm("0", "none")]);
-		//SimplifyTest(new CTerm("A/B-B/A"), [new CTerm("A", "divide"), new CTerm("B", "subtraction"), new CTerm("B", "divide"), new CTerm("A", "none")]);
+		SimplifyTest(new CTerm("1+B-3"), [new CTerm("B", "subtraction", false), new CTerm("2", "none", false)]);
+		
+		SimplifyTest(new CTerm("A&dot;B-B&dot;A"), [new CTerm("0", "none")]);
+		SimplifyTest(new CTerm("A/B-B/A"), [new CTerm("A", "divide"), new CTerm("B", "subtraction"), new CTerm("B", "divide"), new CTerm("A", "none")]);
 
-        //SimplifyTest(new CTerm("A&dot;A"), [new CTerm("A<sup>2</sup>", "none")]);
-		//SimplifyTest(new CTerm("A<sup>2</sup>&dot;A"), [new CTerm("A<sup>3</sup>", "none")]);
-		//SimplifyTest(new CTerm("A<sup>3</sup>/A"), [new CTerm("A<sup>2</sup>", "none")]);
-		//SimplifyTest(new CTerm("1/A<sup>2</sup>&dot;A&dot;A&dot;A"), [new CTerm("A", "none")]);
+        SimplifyTest(new CTerm("A&dot;A"), [new CTerm("A<sup>2</sup>", "none")]);
+		SimplifyTest(new CTerm("A<sup>2</sup>&dot;A"), [new CTerm("A<sup>3</sup>", "none")]);
+		SimplifyTest(new CTerm("A<sup>3</sup>/A"), [new CTerm("A<sup>2</sup>", "none")]);
+		SimplifyTest(new CTerm("1/A<sup>2</sup>&dot;A&dot;A&dot;A"), [new CTerm("A", "none")]);
 		SimplifyTest(new CTerm("1/A/A"), [new CTerm("1", "divide"), new CTerm("A<sup>2</sup>", "none")]);
+		
+		SimplifyTest(new CTerm("1/A/A"), [new CTerm("1", "divide"), new CTerm("A<sup>2</sup>", "none")]);
+		*/
+		SimplifyTest(new CTerm("A+A"), [new CTerm("2", "multiply"), new CTerm("A", "none")]);
 		
 		
 		// steps needed

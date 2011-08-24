@@ -276,6 +276,7 @@
 			   {
 			      var myTerm = new CTerm(additionTerms[j].multiplier, "multiply");
 				  simplifiedTerms.push(myTerm);
+				  additionTerms[j].multiplier = "1";
 			   }
 			   simplifiedTerms.push(additionTerms[j]);			
 		   }
@@ -324,6 +325,7 @@
 				  simplifiedTerms.push(myTerm);
 			   }			   
    			   simplifiedTerms.push(subtractionTerms[j]);
+			   subtractionTerms[j].multiplier = "1";
 		    }
 	    }	 
 		

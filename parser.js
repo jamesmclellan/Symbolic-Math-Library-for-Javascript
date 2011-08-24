@@ -31,8 +31,18 @@
 			 {
 			   returnString += "&part;";
 			 }
+			 if (termArray[i].isParenthetical)
+			 {
+			   returnString += "(";
+			 }			 
+			 
 			 
 			 returnString += termArray[i].unevaluatedString;
+
+			 if (termArray[i].isParenthetical)
+			 {
+			   returnString += ")";
+			 }			 		
 			 
 			 if (termArray[i].exponent.unevaluatedString != "1")
 			 {
@@ -240,232 +250,298 @@
 	
 	////////////////////////////////////////////////////////////////////////////////////
 	
-    function Parse(stringIn)
+	function ParseParen(stringIn, startIdx, bufferRef)
 	{
-	    var newStart = 0; // the start of the buffer
-		this.buffer = ""; // buffer for processed characters; separating this from the input string allows additional manipulation to be performed on the buffer (such as skipping over tags)
-		var nextTermIsNegative = false;
-		var nextTermIsParenthetical = false;
-		this.waitingExponentFlag = false;
-		this.waitingExponentBuffer = "";
+	    // Takes in a string argument and an index into that string
+		//   returns the last character (closing paren) for that string
+		//
+		// Also takes an optional reference "bufferRef". If present, places the
+		//    buffer value in the bufferRef, rather than the default buffer
+		//
 		
-		//alert("I have arrived for string " + stringIn);
-	    for (var i = 0; i < stringIn.length; i++)
+		// Look for paren on this character
+		if (IsParen(stringIn, startIdx))
 		{
-		    //alert("Looking at char " + stringIn.charAt(i));
-			
-		    // Look for paren on this character
-			if (IsParen(stringIn, i))
-			{
-			   //alert("IsParen");
-			   // a. find the end of this paren group
-			   var endOfParen = identifyNestedParen(stringIn, i);
-			   // b. push the paren group onto the buffer
-			   //    do not push the paren group onto the terms array
-			   this.buffer += stringIn.substring(i+1, endOfParen + i);
-			   //alert("Full paren found " + subTerm);
-			   // c. skip i to the end of the paren group
-			   i = i + endOfParen;
-			   nextTermIsParenthetical = true;
-			   newStart = i + 1;
-			   //alert("End of parent reached. Next character = '" + stringIn.charAt(i) + "'");
-			}
-			
-			// Look for addition or subtraction
-			if (IsAddSubtract(stringIn, i))
-			{
-			   //alert("IsAddSub");
-			   // a. push the previous term onto the terms arry
-			   //    i. set the previous term's "relationshipToNextTerm" to "addition" or "subtraction"
-			   var lastEntry = 0;
-			   if (this.terms.length != null)
-			   {
-			      lastEntry = this.terms.length;
-			   }
-			   var type = DetermineAddSubType(stringIn, i);
-			   //    ii. set the next term's "relationshipToPreviousTerm" to "addition" or "subtraction"
-			   //var subTerm = stringIn.substring(newStart, i );
-			   if (this.buffer.length == 0)
-			   {
-			      // if a "+" or "-" was found, with no term preceding it, then the next term is a negative number
-				  if (type=="addition")
-				  {
-				     nextTermIsNegative = false;
-				  }
-				  if (type=="subtraction")
-				  {
-				     nextTermIsNegative = true;
-				  }				  
-				  //alert("Next term will be negative : " + nextTermIsNegative);
-			   } 
-			   else 
-			   {
-			      var tempTerm = new CTerm(this.buffer, type, nextTermIsNegative); // create a new term using the string presently in the buffer
-				  //alert("New term " + buffer + " type " + type + " negative " + nextTermIsNegative);
-				  tempTerm.isParenthetical = nextTermIsParenthetical;
-				  nextTermIsNegative = false;
-				  nextTermIsParenthetical = false;
-				  
-                  this.PushTerm(tempTerm);
-			   }
-			   //    iii. do not get the next term
-			   //    iv. skip i to where the + or - was found
-			   newStart = i + 1;
-			}
+		   // a. find the end of this paren group
+		   var endOfParen = identifyNestedParen(stringIn, startIdx);
+		   // b. push the paren group onto the buffer
+		   //    do not push the paren group onto the terms array
+		   if (typeof(bufferRef)=="undefined")
+		   {
+			   this.buffer += stringIn.substring(startIdx+1, endOfParen + startIdx);
+			   this.nextTermIsParenthetical = true;		   
+		   } 
+		   else
+		   {
+		      bufferRef.buffer = stringIn.substring(startIdx+1, endOfParen + startIdx);
+		   }
+		   
+		   var returnValue = startIdx + endOfParen;
+		   return(returnValue);
+		}
+		else 
+		{
+		   return startIdx;
+		}
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////
+	
+	function BufferObject()
+	{
+	   this.buffer = "";
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////	
+	
+	function TokenObject()
+	{
+	   this.buffer = "";
+	   this.endDelimiter = -1;
+	   this.beginDelimiter = -1;
+	   this.beginToken = -1; // normally this would be equal to endDelimiter + 1
+	   this.endToken = -1;
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////////	
+	
+	function ParseDifferential(stringIn, i)
+	{
+			var diffSymbol = "&part;";
+		    var diffSymbolLength = diffSymbol.length;
+	        var returnValue = "";
 			
 			// Look for a partial differential
 			if (IsDiff(stringIn, i))
 			{
-			    //alert("IsDiff of/wrt " + stringIn.charAt(i+6));
+			    //
+				// Types to Handle:
+				// --------------------------------
+				// 
+				// &part;x(A) <-- letter after "&part;"
+				//             -- then paren
+				// &part;x&part;x[...](A) <-- letter after "&part;"
+				//                         -- then part (repeated)
+				// &part;x&part;y[...](A) <-- letter after "&part;"
+				//                         -- then part (repeated)				
+				// &part;A/&part;x&part;x[...] <-- letter after "&part;"
+				//                              -- then "/"				
+				// &part;A/&part;x&part;y[...] <-- letter after "&part;"
+				//                              -- then "/"
+				// &part;(A)/&part;x
+				// &part;(A)/&part;x&part;x[...]
+				// &part;(A)/&part;x&part;y[...]
+				
+			
 			    // a. look for the next term
 				//   i. if the next term is a letter, add that letter to the "withRespectTo" array
-				if (IsLetter(stringIn, i+6))
+				if (IsLetter(stringIn, i + diffSymbolLength))
 				{
-				    //alert("Diff argument found");
 					//      1. look to see if there is a paren next
-					if (IsParen(stringIn, i+7))
+					var diffLocationAfterLetter = i + diffSymbolLength + 1; // possible parenthesis start location
+					
+					//
+					// Pattern looking for is 
+					//
+					
+					if (IsParen(stringIn, diffLocationAfterLetter))
 					{
-						//            (a) if there is, grab the whole term and push it onto the terms array				   
-					    var endOfParen = identifyNestedParen(stringIn, i+7);
-			            // b. push the paren group onto the terms array
-			            var subTerm = stringIn.substring(i+8, endOfParen+i+7);
-			            var tempTerm = new CTerm(subTerm);
-						tempTerm.withRespectTo.push(stringIn.charAt(i+6));
-			            this.terms.push(tempTerm);
-						this.buffer = ""; // clear the buffer
-						//alert("Clearing buffer in C");	
-						newStart = i + 7 + endOfParen + 1;
-						i = newStart-1;
-					} 
-					else if (IsDiv(stringIn, i+7))
+					    //
+					    // This section of code looks for a partial differential in the form: "&part;x(A)"				
+						//
+			            var subTerm = new BufferObject();
+                        var endParen = ParseParen(stringIn, i + diffSymbolLength, subTerm);					
+			            var tempTerm = new CTerm(subTerm.buffer); 
+						tempTerm.withRespectTo.push(stringIn.charAt(i+diffSymbolLength));
+						this.PushTerm(tempTerm);
+						
+						returnValue = endOfParen + 1;
+						return(returnValue);
+					}
+					else if (IsDiv(stringIn, i + diffSymbolLength + 1))
 					{
 						//      2. look to see if there is a division sybol next
 						//            (b) if there is, look to see if there's a partial differential term next
+						
+						//
+						// This section of code looks for a partial differential in the form: "&part;A/&part;x"
+						//
 						var k = 0;
-						var tempTerm = new CTerm(stringIn.charAt(i+6));							
-						while (IsDiff(stringIn, i+8+k))
+						var afterDivLocation = i + diffSymbolLength + 2;
+						var tempTerm = new CTerm(stringIn.charAt(i + diffSymbolLength)); // get the root "A"
+						while (IsDiff(stringIn, afterDivLocation + k))
 						{
 							//                (i) look for multiple partial differentials; push each one onto the "withRespectTo" array
-							tempTerm.withRespectTo.push(stringIn.charAt(i+8+k+6));
-							//alert("Found partial term '" + stringIn.charAt(i+8+k+6) + "'");
-							k = k+7;
-							newStart = i+8+k;
-							//i = newStart;
-							//alert("Next term '" + stringIn.charAt(i+8+k) + "'");
+							tempTerm.withRespectTo.push(stringIn.charAt(afterDivLocation + k + diffSymbolLength));
+							k = k + diffSymbolLength + 1;
 						}
-						i = newStart;
-                        this.PushTerm(tempTerm);
-						//alert("Clearing buffer in D");	
+                        this.PushTerm(tempTerm);						
+						returnValue = afterDivLocation + k; 
+						return(returnValue);
 					}
 					else
 					{
-					   newStart = i+7;
-					   i = newStart;
+//					   newStart = i+7;
+//					   i = newStart;
 					}
 				}
-				else 
+				else
 				{
-					if (IsParen(stringIn, i+6))
-					{
-						//            (a) if there is, grab the whole term and push it onto the terms array				   
-					    var endOfParen = identifyNestedParen(stringIn, i+6);
-			            // b. push the paren group onto the terms array
-			            var subTerm = stringIn.substring(i+7, endOfParen+i+6);
-			            var tempTerm = new CTerm(subTerm);
-						tempTerm.withRespectTo.push(stringIn.charAt(endOfParen+i+6+8));
-			            this.terms.push(tempTerm);
-						this.buffer = ""; // clear the buffer
-						//alert("Clearing buffer in C");	
-						newStart = i + 6 + endOfParen + 9;
-						i = newStart;
-					} 
-					else if (IsDiv(stringIn, i+6))
-					{
-						//      2. look to see if there is a division sybol next
-						//            (b) if there is, look to see if there's a partial differential term next
-						var k = 0;
-						var tempTerm = new CTerm(stringIn.charAt(i+5));							
-						while (IsDiff(stringIn, i+7+k))
-						{
-							//                (i) look for multiple partial differentials; push each one onto the "withRespectTo" array
-							tempTerm.withRespectTo.push(stringIn.charAt(i+7+k+6));
-							//alert("Found partial term '" + stringIn.charAt(i+8+k+6) + "'");
-							k = k+6;
-							newStart = i+7+k;
-							//i = newStart;
-							//alert("Next term '" + stringIn.charAt(i+8+k) + "'");
-						}
-						i = newStart;
-                        this.PushTerm(tempTerm);
-						//alert("Clearing buffer in D");	
-					}
-					else
-					{
-					   newStart = i+6;
-					   i = newStart;
-					}				
 				}
-			}
-			
-			// Look for an exponent
-			if (IsExponent(stringIn, i))
+			}	
+			else
 			{
-			   //alert("IsExp");
-			   i = i+5;
-			   // a. find the end of this paren group
-			   var endOfExponent = identifyEndOfExponent(stringIn, i);
-			   this.waitingExponentFlag = true;
-			   this.waitingExponentBuffer += stringIn.substring(i, endOfExponent);
-			   // c. skip i to the end of the paren group
-			   newStart = endOfExponent + 6;
-			   i = newStart - 1;
+			  return(i);
+			}
+	
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////	
+	
+	function ParseAddSubtract(stringIn, i)
+	{
+		if (IsAddSubtract(stringIn, i))
+		{
+		   // a. push the previous term onto the terms arry
+		   //    i. set the previous term's "relationshipToNextTerm" to "addition" or "subtraction"
+		   var type = DetermineAddSubType(stringIn, i);
+		   //    ii. set the next term's "relationshipToPreviousTerm" to "addition" or "subtraction"
+		   if (this.buffer.length == 0)
+		   {
+			  // if a "+" or "-" was found, with no term preceding it, then the next term is a negative number
+			  if (type=="addition")
+			  {
+				 this.nextTermIsNegative = false;
+			  }
+			  if (type=="subtraction")
+			  {
+				 this.nextTermIsNegative = true;
+			  }				  
+		   } 
+		   else 
+		   {
+			  var tempTerm = new CTerm(this.buffer, type, this.nextTermIsNegative); // create a new term using the string presently in the buffer
+			  tempTerm.isParenthetical = this.nextTermIsParenthetical;
+			  this.nextTermIsNegative = false;
+			  this.nextTermIsParenthetical = false;
+			  
+			  this.PushTerm(tempTerm);
+		   }
+		   //    iii. do not get the next term
+		   //    iv. skip i to where the + or - was found
+		   return(i + 1);
+		}
+		else
+		{
+		  return(i);
+		}
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////	
+
+    function ParseExponent(stringIn, i)
+    {
+	    var returnValue = 0;
+		var startExpSymbol = "<sup>";
+		var endExpSymbol = "</sup>";
+		var lengthStartExpSymbol = startExpSymbol.length;
+		var lengthEndExpSymbol = endExpSymbol.length;
+		
+		if (IsExponent(stringIn, i))
+		{
+		   i = i + lengthStartExpSymbol;
+		   // a. find the end of this paren group
+		   var endOfExponent = identifyEndOfExponent(stringIn, i);
+		   this.waitingExponentFlag = true;
+		   this.waitingExponentBuffer += stringIn.substring(i, endOfExponent);
+		   // c. skip i to the end of the paren group
+		   returnValue = endOfExponent + 6;
+		   return(returnValue - 1);
+		}
+		else
+		{
+		   return(i);
+		}	
+    }	
+	
+	////////////////////////////////////////////////////////////////////////////////////	
+
+    function ParseMultiplicationDivision(stringIn, i)
+    {
+	    var returnValue = 0;
+		var multiplySymbol = "&dot;";
+		var multiplySymbolLength = multiplySymbol.length;		
+		
+		if (IsMultiplicationDivision(stringIn, i))
+		{
+		   // a. push the previous term onto the terms arry
+		   //    i. set the previous term's "relationshipToNextTerm" to "multiplication" or "division"
+		   var type = DetermineMulDivType(stringIn, i);
+		   //    ii. set the next term's "relationshipToPreviousTerm" to "multiplication" or "division"
+		   //var subTerm = stringIn.substring(newStart, i );
+		   var tempTerm = new CTerm(this.buffer, type, this.nextTermIsNegative);
+		   tempTerm.isParenthetical = this.nextTermIsParenthetical;
+		   this.nextTermIsNegative = false;
+		   this.nextTermIsParenthetical = false;
+		   this.PushTerm(tempTerm);
+		   //    iii. do not get the next term
+		   //    iv. skip i to where the * or / was found
+		   if (type == "multiply") 
+		   {
+			  returnValue = i + multiplySymbolLength;
+		   }
+		   else
+		   {
+			  returnValue = i + 1;
+		   }
+		   return(returnValue);
+		}	
+		else
+		{
+		   return(i)
+		}
+    }	
+	
+	////////////////////////////////////////////////////////////////////////////////////	
+	
+    function Parse(stringIn)
+	{
+	    var newStart = 0; // the start of the buffer
+		this.buffer = ""; // buffer for processed characters; separating this from the input string allows additional manipulation to be performed on the buffer (such as skipping over tags)
+		this.nextTermIsNegative = false;
+		this.nextTermIsParenthetical = false;
+		this.waitingExponentFlag = false;
+		this.waitingExponentBuffer = "";		
+		var thisPass = 0; // a dirty flag
+		
+	    for (var i = 0; i < stringIn.length; i++)
+		{
+		    thisPass = i;
+			
+			// parse any parenthetical, and change the index
+			i = this.ParsePar(stringIn, i);
+			if (i != thisPass) continue;
+			
+			// look for addition or subtraction			
+			i = this.ParseAdd(stringIn, i);
+			if (i != thisPass) {
+			   i = i - 1; // ParseAddSubtract() only increments to dirty the index; the continue will take care of the real incrementing
+			   continue;
 			}
 			
-			//if (IsExponentEnd(stringIn, i))
-			//{
-			  // if this is the closing part of an exponent, advance past it
-			  //newStart = i+6;
-              //i = i+5
-			//}
+			// look for a differential
+			i = this.ParseDiff(stringIn, i);
+			if (i != thisPass) continue;
+				
+			// Look for an exponent
+            i = this.ParseExp(stringIn, i);
+			if (i != thisPass) continue;
 			
 			// Look for multiplication or division
-			if (IsMultiplicationDivision(stringIn, i))
-			{
-			   //alert("IsMult");
-			   // a. push the previous term onto the terms arry
-			   //    i. set the previous term's "relationshipToNextTerm" to "multiplication" or "division"
-			   var lastEntry = 0;
-			   if (this.terms.length != null)
-			   {
-			      lastEntry = this.terms.length;
-			   }
-			   var type = DetermineMulDivType(stringIn, i);
-			   //    ii. set the next term's "relationshipToPreviousTerm" to "multiplication" or "division"
-			   //var subTerm = stringIn.substring(newStart, i );
-			   if (this.buffer.length > 0)
-			   {
-			      // if a term is in the buffer, push it to the terms array
-			      var tempTerm = new CTerm(this.buffer, type, nextTermIsNegative);
-			      tempTerm.isParenthetical = nextTermIsParenthetical;
-			      nextTermIsNegative = false;
-			      nextTermIsParenthetical = false;
-                  this.PushTerm(tempTerm);
-			   }
-			   else if (this.terms.length > 0)
-			   {
-			      this.terms[this.terms.length-1].relationshipToNextTerm = type;
-			   }
-			   //    iii. do not get the next term
-			   //    iv. skip i to where the * or / was found
-			   if (type == "multiply") 
-			   {
-			      newStart = i + 5;
-				  i = newStart - 1;
-			   }
-			   else
-			   {
-			      newStart = i + 1;
-			   }
+            i = this.ParseMul(stringIn, i);
+			if (i != thisPass) {
+			   i = i -1;
+			   continue;
 			}
 			
 			// Look for a trig function
@@ -476,24 +552,21 @@
 			
 			if (i <= stringIn.length && i >= newStart) 
 			{
-			   this.buffer += stringIn.charAt(i);
-			   //alert("Creating new term '" + buffer + "'");			   
+			   this.buffer += stringIn.charAt(i);	   
 			}
 		}
+		
 		// at the end of the process, take any trailing data without operators and push as a term
-	    //var subTerm = stringIn.substring(newStart, i );
-		//alert("End of String. Last term start " + newStart + ", end " + i + ". Value = " + subTerm);
-		//alert("End of String. Buffer = '" + buffer + "'.");
 		if (this.buffer.length > 0) {
-	       var tempTerm = new CTerm(this.buffer, "none", nextTermIsNegative);
-		   tempTerm.isParenthetical = nextTermIsParenthetical;
+	       var tempTerm = new CTerm(this.buffer, "none", this.nextTermIsNegative);
+		   tempTerm.isParenthetical = this.nextTermIsParenthetical;
            this.PushTerm(tempTerm);
 		}
 		
 		var tempString = Unparse(this.terms);
 		if (tempString != this.unevaluatedString)
 		{
-		  alert ("PARSE REDUNDANCY CHECK ERROR: Unparse returned " + tempString + " after parsing input " + this.unevaluatedString);
+		   alert ("PARSE REDUNDANCY CHECK ERROR: Unparse returned " + tempString + " after parsing input " + this.unevaluatedString);
 		}
 	}
 
