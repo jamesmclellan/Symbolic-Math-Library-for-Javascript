@@ -89,7 +89,19 @@
 		DoTestDiff("&part;A/&part;x", ["A"], ["x"]);
 		DoTestDiff("&part;A/&part;x&part;t", ["A"], ["x", "t"]);
 		//DoTestDiff("&part;x(0.5&dot;(1/A))", ["(0.5&dot;(1/A))"],["x"]);
+		*/
 		
+		//SimplifyTest(new CTerm("A&dot;B-B&dot;A"), [new CTerm("0", "none")]);
+		//SimplifyTest(new CTerm("-A&dot;B+B&dot;A"), [new CTerm("0", "none")]);
+		//SimplifyTest(new CTerm("(A&dot;B)-(B&dot;A)"), [new CTerm("0", "none")]);
+		//SimplifyTest(new CTerm("-(A&dot;B)+(B&dot;A)"), [new CTerm("0", "none")]);		
+		//SimplifyTest(new CTerm("(-A&dot;B)+(B&dot;A)"), [new CTerm("0", "none")]);		
+		//SimplifyTest(new CTerm("(A&dot;-B)+(B&dot;A)"), [new CTerm("0", "none")]);				
+		SimplifyTest(new CTerm("(-A&dot;-B)+(-B&dot;A)"), [new CTerm("0", "none")]);	
+		SimplifyTest(new CTerm("(-A&dot;-B)+(B&dot;-A)"), [new CTerm("0", "none")]);	
+		SimplifyTest(new CTerm("-(A&dot;-B)+(B&dot;-A)"), [new CTerm("0", "none")]);	
+		SimplifyTest(new CTerm("-(-A&dot;B)+(B&dot;-A)"), [new CTerm("0", "none")]);	
+		//BADTEST SimplifyTest(new CTerm("(-A&dot;-B)+(-B&dot;-A)"), [new CTerm("0", "none")]);	
 		SimplifyTest(new CTerm("A/A"), [new CTerm("1", "none")]);
 		SimplifyTest(new CTerm("B/C&dot;C/B"), [new CTerm("1", "none")]);				
 		SimplifyTest(new CTerm("0&dot;B"), [new CTerm("0", "none")]);
@@ -140,8 +152,8 @@
 		SimplifyTest(new CTerm("1/A/A"), [new CTerm("1", "divide"), new CTerm("A<sup>2</sup>", "none")]);
 		
 		SimplifyTest(new CTerm("1/A/A"), [new CTerm("1", "divide"), new CTerm("A<sup>2</sup>", "none")]);
-		*/
-		SimplifyTest(new CTerm("A+A"), [new CTerm("2", "multiply"), new CTerm("A", "none")]);
+		SimplifyTest(new CTerm("A+A"), [new CTerm("2", "multiply"), new CTerm("A", "none")]);		
+		
 		
 		
 		// steps needed
@@ -204,7 +216,7 @@
 	    alert("Running test " + testString );
 		termInput.Evaluate(termInput.unevaluatedString);
 		var resultTerm = new CTerm("");
-		resultTerm.terms = SimplifyTerms(termInput);
+		resultTerm = SimplifyTerms(termInput);
 		//alert("Simplify returned (2) " + resultTerm.terms[0].isNegative);
 		//alert("Simplify returned " + resultTerm.terms.length + " term, value = " + resultTerm.terms[0].unevaluatedString );
 		checkUnitTest(testString, resultTerm, expectedResults);	

@@ -12,14 +12,14 @@
 
 	////////////////////////////////////////////////////////////////////////////////////
 	
-	function Unparse(termArray)
+	function Unparse(termArray, suppressMinusSigns)
 	{
 	   var returnString = "";
 	   
 	   for (var i = 0; i < termArray.length; i++)
 	   {
 			 // :: TODO :: Finish this
-			 if (termArray[i].isNegative)
+			 if (termArray[i].isNegative && !suppressMinusSigns)
 			 {
 			   returnString += "-";
 			 }
@@ -90,10 +90,10 @@
 	   {
 			 // :: TODO :: Finish this
 			 //alert("Called UnparseUnrelated, this term = " + termArray[i].isMultiplicationTerm);
-			 if (termArray[i].isNegative)
-			 {
-			   returnString += "-";
-			 }
+//			 if (termArray[i].isNegative)
+//			 {
+//			   returnString += "-";
+//			 }
 			 if (termArray[i].withRespectTo.length > 0)
 			 {
 			   returnString += "&part;";
@@ -563,7 +563,7 @@
            this.PushTerm(tempTerm);
 		}
 		
-		var tempString = Unparse(this.terms);
+		var tempString = Unparse(this.terms, false);
 		if (tempString != this.unevaluatedString)
 		{
 		   alert ("PARSE REDUNDANCY CHECK ERROR: Unparse returned " + tempString + " after parsing input " + this.unevaluatedString);

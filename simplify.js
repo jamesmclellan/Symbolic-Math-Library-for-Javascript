@@ -12,6 +12,7 @@
 	   var simplifiedTerms = []; // the array of results -- final, simplified terms
 	   var step3Terms = []; // term results of multiplication/division
 	   var step4Terms = []; // term results of addition/subtraction
+	   var finalTerm = new CTerm();
 	   var finalTerms = [];
 	   var bMultiplyDivideLatch = false;
 	   
@@ -40,8 +41,12 @@
 			  
 		      termInput.terms[i].Evaluate(termInput.terms[i].unevaluatedString);
 		      var resultTerm = new CTerm("");
-		      resultTerm.terms = SimplifyTerms(termInput.terms[i]);
-			  resultTerm.unevaluatedString = Unparse(resultTerm.terms); // unevaluate to get child's metadata into the parent term
+		      resultTerm = SimplifyTerms(termInput.terms[i]);
+			  resultTerm.unevaluatedString = Unparse(resultTerm.terms, true); // unevaluate to get child's metadata into the parent term
+			  resultTerm.relationshipToNextTerm = termInput.terms[i].relationshipToNextTerm;
+			  var myTerm = PackageMultDivReturnValue(resultTerm.terms);
+			  resultTerm.isNegative = ( myTerm.isNegative == termInput.terms[i].isNegative ) ? false : true; // check parent term is negative XOR child terms -- there is no XOR operator in javascript, so if signs are the same (positive or negative) the result is positive
+			  resultTerm.equivalentTerms = myTerm.equivalentTerms;
 			  step3Terms.push(resultTerm);
 		   }
 		   else if (termInput.terms[i].withRespectTo.length > 0)
@@ -51,7 +56,7 @@
 			  
 		      termInput.terms[i].Evaluate(termInput.terms[i].unevaluatedString); // evaluate the differential into individual terms; the parser moved the whole differential over
 		      termInput.terms[i].terms = PerformPartialDifferential(termInput.terms[i], termInput.terms[i].withRespectTo[0]);
-			  termInput.terms[i].unevaluatedString = Unparse(termInput.terms[i].terms); // unevaluate to get child's metadata into the parent term
+			  termInput.terms[i].unevaluatedString = Unparse(termInput.terms[i].terms, true); // unevaluate to get child's metadata into the parent term
 			  termInput.terms[i].terms = [];
 			  termInput.terms[i].Evaluate(termInput.terms[i].unevaluatedString); // perform a second evaluate to replace multiplier with real terms
 			  termInput.terms[i].withRespectTo = []; // clear the withRespectTo array (this will need to be corrected)
@@ -102,14 +107,21 @@
        step4Terms = SimplifyAdditionSubtraction(step3Terms);
 	   //alert("Simplify add/sub returned " + step4Terms.length + " terms");
 	   //alert("Simplify returned " + step4Terms[0].isNegative);
-	   PushToFinal(finalTerms, step4Terms);
-	   //alert("PushToFinal returned " + finalTerms[0].isNegative);
-	   if (finalTerms.length > 0)
+	   
+	   ///////////////////////////////////////////////
+	   // JHM CHANGED THIS BLOCK
+	   //
+	   PushToFinal(finalTerm, step4Terms);
+	   //finalTerm = termInput;
+	   //finalTerm.terms = step4Terms;
+	   //
+	   ///////////////////////////////////////////////
+	   if (finalTerm.terms.length > 0)
 	   {
-	      finalTerms[finalTerms.length - 1].relationshipToNextTerm = "none";
+	      finalTerm.terms[finalTerm.terms.length - 1].relationshipToNextTerm = "none";
 	   }
 
-	   return finalTerms;
+	   return finalTerm;
 	}
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -136,7 +148,7 @@
 	{
 	   var myTerm = new CTerm("", type, false);
 	   myTerm.terms = valueToPackage;
-	   myTerm.unevaluatedString = Unparse(myTerm.terms);
+	   myTerm.unevaluatedString = Unparse(myTerm.terms, true);
 	   //alert("Entering factorial loop to find equivalent terms for " + myTerm.unevaluatedString);
 	   myTerm.equivalentTerms = FindEquivalentTerms(myTerm);
 	   myTerm.isNegative = DetermineSign(myTerm.terms);
@@ -439,7 +451,7 @@
 	
 	////////////////////////////////////////////////////////////////////////////////////
 	
-	function PushToFinal(finalTerms, step4Terms)
+	function PushToFinal(finalTerm, step4Terms)
 	{
 	   for (var i = 0; i < step4Terms.length; i++)
 	   {
@@ -454,13 +466,14 @@
 			   }
 			   
 			   //alert("Pushing to final sub-term " + step4Terms[i].terms[j].unevaluatedString);
-			   finalTerms.push(step4Terms[i].terms[j]);
+			   finalTerm.terms.push(step4Terms[i].terms[j]);
+			   finalTerm
 			 }
 		 } 
 		 else 
 		 {
 		    //alert("Pushing to final term " + step4Terms[i].unevaluatedString);
-		    finalTerms.push(step4Terms[i]);
+		    finalTerm.terms.push(step4Terms[i]);
 		 }
 	   }	
 	}
@@ -765,7 +778,7 @@
 	   //        operations between positive numbers, unless it is impossible to interpret the term that way, in
 	   //        which case the term is made a negative number.
 	   //
-	   for (var i = 0; i < (termInput.length - 1); i++)
+	   for (var i = 0; i < termInput.length; i++)
 	   {
 	      if (termInput[i].relationshipToNextTerm == "subtraction")
 		  {
@@ -790,14 +803,14 @@
 	   //    related to one another by "addition" or "subtraction" operation.
 	   //    I'm not sure this will work... negative numbers may need to exist.
 	   
-	   for (var i = 0; i < (termInput.length); i++)
+	   for (var i = 0; i < termInput.length; i++)
 	   {
 	      if (i == 0 && termInput[i].isNegative == false)
 		  {
   	         //alert("Found addition term " + termInput[i].unevaluatedString);
 		     returnValue.push(termInput[i]);
 		  }
-	      else if (i > 0 && termInput[i-1].relationshipToNextTerm != "subtraction")
+	      else if (i > 0 && (termInput[i-1].relationshipToNextTerm != "subtraction" && termInput[i].isNegative == false))
 		  {
   	         //alert("Found addition term " + termInput[i].unevaluatedString);
 		     returnValue.push(termInput[i]);
@@ -826,7 +839,7 @@
 	{
 	   var returnValue = [];
 	   
-	   for (var i = 0; i < (termInput.length); i++)
+	   for (var i = 0; i < termInput.length; i++)
 	   {
 		  returnValue.push(termInput[i]);		  	   
 	      if (termInput[i].relationshipToNextTerm == "divide")
