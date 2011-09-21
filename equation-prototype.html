@@ -61,12 +61,18 @@
     var stringToParse = "&part;x(0.5&dot;(1/A)&dot;(&part;A/&part;x)) - &part;x(0.5&dot;(1/A)&dot;(&part;A/&part;x)) + (0.5&dot;(1/A)&dot;(&part;A/&part;x))&dot;(0.5&dot;(1/A)&dot;(&part;A/&part;x)) - (0.5&dot;(1/A)&dot;(&part;A/&part;x))&dot;(0.5&dot;(1/A)&dot;(&part;A/&part;x)) + &part;x&dot;(0.5&dot;(1/A)&dot;(&part;A/&part;x)) - &part;x(0.5&dot;(1/A)&dot;(&part;A/&part;x)) + (0.5&dot;(1/A)&dot;(0-&part;B/&part;t))&dot;(0.5&dot;(1/B)&dot;(&part;B/&part;t)) - (0.5&dot;(1/A)&dot;(0-&part;B/&part;t))&dot;(0.5&dot;(1/B)&dot;(&part;B/&part;t))";
 	
 	
-
+    function Out(stringIn)
+	{
+	   // wrap the output function so that I can switch between alerts or to-the-document
+	   // alert(stringIn);
+	   outDiv = document.getElementById("outdiv");
+	   outDiv.innerHTML += "<br>"+stringIn;
+	}
 	
 	function runStuff() 
 	{
         //var thisTerm = new CTerm(stringToParse);			
-		/*
+		
 		DoTest("A", [new CTerm("A", "none")]);
 		DoTest("-A", [new CTerm("A", "none", true)]);
 		
@@ -89,14 +95,13 @@
 		DoTestDiff("&part;A/&part;x", ["A"], ["x"]);
 		DoTestDiff("&part;A/&part;x&part;t", ["A"], ["x", "t"]);
 		//DoTestDiff("&part;x(0.5&dot;(1/A))", ["(0.5&dot;(1/A))"],["x"]);
-		*/
 		
-		//SimplifyTest(new CTerm("A&dot;B-B&dot;A"), [new CTerm("0", "none")]);
-		//SimplifyTest(new CTerm("-A&dot;B+B&dot;A"), [new CTerm("0", "none")]);
-		//SimplifyTest(new CTerm("(A&dot;B)-(B&dot;A)"), [new CTerm("0", "none")]);
-		//SimplifyTest(new CTerm("-(A&dot;B)+(B&dot;A)"), [new CTerm("0", "none")]);		
-		//SimplifyTest(new CTerm("(-A&dot;B)+(B&dot;A)"), [new CTerm("0", "none")]);		
-		//SimplifyTest(new CTerm("(A&dot;-B)+(B&dot;A)"), [new CTerm("0", "none")]);				
+		SimplifyTest(new CTerm("A&dot;B-B&dot;A"), [new CTerm("0", "none")]);
+		SimplifyTest(new CTerm("-A&dot;B+B&dot;A"), [new CTerm("0", "none")]);
+		SimplifyTest(new CTerm("(A&dot;B)-(B&dot;A)"), [new CTerm("0", "none")]);
+		SimplifyTest(new CTerm("-(A&dot;B)+(B&dot;A)"), [new CTerm("0", "none")]);		
+		SimplifyTest(new CTerm("(-A&dot;B)+(B&dot;A)"), [new CTerm("0", "none")]);		
+		SimplifyTest(new CTerm("(A&dot;-B)+(B&dot;A)"), [new CTerm("0", "none")]);				
 		SimplifyTest(new CTerm("(-A&dot;-B)+(-B&dot;A)"), [new CTerm("0", "none")]);	
 		SimplifyTest(new CTerm("(-A&dot;-B)+(B&dot;-A)"), [new CTerm("0", "none")]);	
 		SimplifyTest(new CTerm("-(A&dot;-B)+(B&dot;-A)"), [new CTerm("0", "none")]);	
@@ -144,15 +149,17 @@
 		
 		SimplifyTest(new CTerm("A&dot;B-B&dot;A"), [new CTerm("0", "none")]);
 		SimplifyTest(new CTerm("A/B-B/A"), [new CTerm("A", "divide"), new CTerm("B", "subtraction"), new CTerm("B", "divide"), new CTerm("A", "none")]);
-
         SimplifyTest(new CTerm("A&dot;A"), [new CTerm("A<sup>2</sup>", "none")]);
 		SimplifyTest(new CTerm("A<sup>2</sup>&dot;A"), [new CTerm("A<sup>3</sup>", "none")]);
 		SimplifyTest(new CTerm("A<sup>3</sup>/A"), [new CTerm("A<sup>2</sup>", "none")]);
-		SimplifyTest(new CTerm("1/A<sup>2</sup>&dot;A&dot;A&dot;A"), [new CTerm("A", "none")]);
+		//SimplifyTest(new CTerm("1/A<sup>2</sup>&dot;A&dot;A&dot;A"), [new CTerm("1", "multiply"), new CTerm("A", "none")]);
 		SimplifyTest(new CTerm("1/A/A"), [new CTerm("1", "divide"), new CTerm("A<sup>2</sup>", "none")]);
 		
 		SimplifyTest(new CTerm("1/A/A"), [new CTerm("1", "divide"), new CTerm("A<sup>2</sup>", "none")]);
-		SimplifyTest(new CTerm("A+A"), [new CTerm("2", "multiply"), new CTerm("A", "none")]);		
+		SimplifyTest(new CTerm("A+A"), [new CTerm("2", "multiply"), new CTerm("A", "none")]);	
+        
+		SimplifyTest(new CTerm("&part;x<sup>2</sup>/&part;y"), [new CTerm("2", "multiply"), new CTerm("A", "none")]);			
+		SimplifyTest(new CTerm("&part;x<sup>3</sup>/&part;y"), [new CTerm("3", "multiply"), new CTerm("A<sup>2</sup>", "none")]);			
 		
 		
 		
@@ -213,36 +220,35 @@
 	function SimplifyTest( termInput, expectedResults )
 	{
 		var testString = termInput.unevaluatedString;	
-	    alert("Running test " + testString );
+	    Out("Running test " + testString );
 		termInput.Evaluate(termInput.unevaluatedString);
 		var resultTerm = new CTerm("");
 		resultTerm = SimplifyTerms(termInput);
-		//alert("Simplify returned (2) " + resultTerm.terms[0].isNegative);
-		//alert("Simplify returned " + resultTerm.terms.length + " term, value = " + resultTerm.terms[0].unevaluatedString );
+
 		checkUnitTest(testString, resultTerm, expectedResults);	
-		alert("Completed test " + testString );	
+		Out("Completed test " + testString );	
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////
 	
 	function DoTest(testString, expectedResults)
 	{
-	    alert("Running test " + testString );
+	    Out("Running test " + testString );
 		var thisTerm = new CTerm(testString);
 		thisTerm.Evaluate(testString);
 		checkUnitTest(testString, thisTerm, expectedResults);	
-		alert("Completed test " + testString );
+		Out("Completed test " + testString );
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////
 	
     function DoTestDiff(testString, expectedResults, expectedDiffs)
 	{
-	    //alert("Running test " + testString );
+	    //Out("Running test " + testString );
 		var thisTerm = new CTerm(testString);
 		thisTerm.Evaluate(testString);
 		checkUnitTestDiff(testString, thisTerm, 0, expectedResults, expectedDiffs);	
-		//alert("Completed test " + testString );
+		//Out("Completed test " + testString );
 	}
 	
 	////////////////////////////////////////////////////////////////////////////////////
@@ -251,31 +257,30 @@
 	{
 	   if(term.terms.length != expectedResults.length)
 	   {
-	      alert("Test '" + testname + "': Number of terms isn't correct. Expect " + expectedResults.length + ", observed " + term.terms.length);
+	      Out("Test '" + testname + "': Number of terms isn't correct. Expect " + expectedResults.length + ", observed " + term.terms.length);
 	   }
-	   //alert("expectedResults length = " + expectedResults.length);
-	   //alert("expected results name= " + expectedResults[0].unevaluatedString + ", type = " + expectedResults[0].relationshipToNextTerm);
+
 	   for (var i = 0; i < expectedResults.length; i++)
 	   {
 	      // check term value
 	      if (term.terms[i].unevaluatedString != expectedResults[i].unevaluatedString)
 		  {
-		     alert( "TEST Name: '" + testname + "' term " + (i) + ". Expected '" + expectedResults[i].unevaluatedString + "', observed '" + term.terms[i].unevaluatedString + "'"); 
+		     Out( "TEST Name: '" + testname + "' term " + (i) + ". Expected '" + expectedResults[i].unevaluatedString + "', observed '" + term.terms[i].unevaluatedString + "'"); 
 		  }
 		  // check relationship type
 	      if (term.terms[i].relationshipToNextTerm != expectedResults[i].relationshipToNextTerm)
 		  {
-		     alert( "TEST Type: '" + testname + "' term " + (i) + ". Expected '" + expectedResults[i].relationshipToNextTerm + "', observed '" + term.terms[i].relationshipToNextTerm + "'"); 
+		     Out( "TEST Type: '" + testname + "' term " + (i) + ". Expected '" + expectedResults[i].relationshipToNextTerm + "', observed '" + term.terms[i].relationshipToNextTerm + "'"); 
 		  }		
           // check sign
 	      if (term.terms[i].isNegative != expectedResults[i].isNegative)
 		  {
-		     alert( "TEST Sign: '" + testname + "' term " + (i) + ". Expected '" + expectedResults[i].isNegative + "', observed '" + term.terms[i].isNegative + "'"); 
+		     Out( "TEST Sign: '" + testname + "' term " + (i) + ". Expected '" + expectedResults[i].isNegative + "', observed '" + term.terms[i].isNegative + "'"); 
 		  }		
           // check exponent		  
 	      if (term.terms[i].exponent.unevaluatedString != expectedResults[i].exponent.unevaluatedString)
 		  {
-		     alert( "TEST Exponent: '" + testname + "' term " + (i) + ". Expected '" + expectedResults[i].exponent.unevaluatedString + "', observed '" + term.terms[i].exponent.unevaluatedString + "'"); 
+		     Out( "TEST Exponent: '" + testname + "' term " + (i) + ". Expected '" + expectedResults[i].exponent.unevaluatedString + "', observed '" + term.terms[i].exponent.unevaluatedString + "'"); 
 		  }				  
 		  // check partial differentials
 		  // :TODO:
@@ -288,11 +293,11 @@
 	{
 	   if(term.terms.length != expectedResults.length)
 	   {
-	      alert("Test '" + testname + "': Number of terms isn't correct. Expect " + expectedResults.length + ", observed " + term.terms.length);
+	      Out("Test '" + testname + "': Number of terms isn't correct. Expect " + expectedResults.length + ", observed " + term.terms.length);
 		  
 		  for (var k = 0; k < term.terms.length; k++)
 		  {
-		     alert("Term " + k + " = " + term.terms[k].unevaluatedString);
+		     Out("Term " + k + " = " + term.terms[k].unevaluatedString);
 		  }
 	   }
 //	   for (var i = 0; i < expectedResults.length; i++)
@@ -300,7 +305,7 @@
        var i = index;
 	      if (term.terms[i].unevaluatedString != expectedResults[0])
 		  {
-		     alert( "TEST: '" + testname + "' term " + (i) + ". Expected '" + expectedResults[0] + "', observed '" + term.terms[i].unevaluatedString + "'"); 
+		     Out( "TEST: '" + testname + "' term " + (i) + ". Expected '" + expectedResults[0] + "', observed '" + term.terms[i].unevaluatedString + "'"); 
 		  }
 //	   }
 	   
@@ -308,7 +313,7 @@
 	   {
 	      if (term.terms[i].withRespectTo[j] != expectedDiffs[j])
 		  {
-		     alert( "TEST: '" + testname + "' term " + (i) + ". Expected '" + expectedDiffs[j] + "', observed '" + term.terms[i].withRespectTo[j] + "'"); 
+		     Out( "TEST: '" + testname + "' term " + (i) + ". Expected '" + expectedDiffs[j] + "', observed '" + term.terms[i].withRespectTo[j] + "'"); 
 		  }		  
 	   }
 	}	
@@ -320,5 +325,6 @@
 	
   </script>
   <input type="button" value="Simplify Equations" onclick="runStuff()" />
+  <div id="outdiv"></div>
 </body>
 </html>
