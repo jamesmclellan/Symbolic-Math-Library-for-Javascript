@@ -157,9 +157,12 @@
 		
 		SimplifyTest(new CTerm("1/A/A"), [new CTerm("1", "divide"), new CTerm("A<sup>2</sup>", "none")]);
 		SimplifyTest(new CTerm("A+A"), [new CTerm("2", "multiply"), new CTerm("A", "none")]);	
+
+		SimplifyTest(new CTerm("&part;y(x<sup>2</sup>)"), [new CTerm("2&dot;x&dot;&part;x/&part;y", "none")]);			
+		SimplifyTest(new CTerm("&part;y(x<sup>3</sup>)"), [new CTerm("3&dot;x<sup>2</sup>&dot;&part;x/&part;y", "none")]);			
         
-		SimplifyTest(new CTerm("&part;x<sup>2</sup>/&part;y"), [new CTerm("2", "multiply"), new CTerm("A", "none")]);			
-		SimplifyTest(new CTerm("&part;x<sup>3</sup>/&part;y"), [new CTerm("3", "multiply"), new CTerm("A<sup>2</sup>", "none")]);			
+		SimplifyTest(new CTerm("&part;x<sup>2</sup>/&part;y"), [new CTerm("2", "multiply"), new CTerm("x", "none")]);			
+		SimplifyTest(new CTerm("&part;x<sup>3</sup>/&part;y"), [new CTerm("3", "multiply"), new CTerm("x<sup>2</sup>", "none")]);			
 		
 		
 		

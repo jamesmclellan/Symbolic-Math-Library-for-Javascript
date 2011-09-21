@@ -11,9 +11,70 @@
 
 
 	////////////////////////////////////////////////////////////////////////////////////
+
+    function ResolveMetaData(termInput)
+	{
+	    // Resolves a single term (assumes no subterms), placing any unresolved exponent or multiplier 
+		//   on the unevaluated string
+		//  
+	    var returnString = "";
+		
+		// if (termInput.isNegative && !suppressMinusSigns)
+		// {
+		//   returnString += "-";
+		// }
+		 if (termInput.multiplier != "1")
+		 {
+		   returnString += termInput.multiplier + "&dot;";
+		   termInput.multiplier = "1";
+		 }
+		 if (termInput.withRespectTo.length > 0)
+		 {
+		   returnString += "&part;";
+		 }
+		// if (termInput.isParenthetical)
+		// {
+		//   returnString += "(";
+		// }			 
+		 
+		 
+		 returnString += termInput.unevaluatedString;
+
+		 //if (termInput.isParenthetical)
+		 //{
+		 //  returnString += ")";
+		 //  termInput.isParenthetical = false;
+		 //}			 		
+		 
+		 if (termInput.exponent.unevaluatedString != "1")
+		 {
+			returnString += "<sup>" + termInput.exponent.unevaluatedString + "</sup>";
+			termInput.exponent.unevaluatedString = "1";
+		 }				 
+		 
+		 if (termInput.withRespectTo.length > 0)
+		 {
+		   // :TODO: Loop through multiple w.r.t entries
+		   returnString += "/";
+		   for (var j = 0; j < termInput.withRespectTo.length; j++)
+		   {
+			  returnString += "&part;" + termInput.withRespectTo[j];
+		   }
+		   termInput.withRespectTo = [];
+		 }			 
+			 
+	   return returnString;		
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////////	
 	
 	function Unparse(termArray, suppressMinusSigns)
 	{
+	   // Unparse()
+	   // Purpose: should be the inverse of the parsing operation
+	   // Arguments:
+	   //    suppressMinusSigns - if true, suppresses unparsing negatives, this is useful when keeping
+	   //         the negative sign as metadata for cancel operations
 	   var returnString = "";
 	   
 	   for (var i = 0; i < termArray.length; i++)
@@ -350,12 +411,12 @@
 					    // This section of code looks for a partial differential in the form: "&part;x(A)"				
 						//
 			            var subTerm = new BufferObject();
-                        var endParen = ParseParen(stringIn, i + diffSymbolLength, subTerm);					
+                        var endParen = ParseParen(stringIn, diffLocationAfterLetter, subTerm);					
 			            var tempTerm = new CTerm(subTerm.buffer); 
 						tempTerm.withRespectTo.push(stringIn.charAt(i+diffSymbolLength));
 						this.PushTerm(tempTerm);
 						
-						returnValue = endOfParen + 1;
+						returnValue = endParen + 1;
 						return(returnValue);
 					}
 					else if (IsDiv(stringIn, i + diffSymbolLength + 1))

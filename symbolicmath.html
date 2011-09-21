@@ -18,7 +18,7 @@
 		    var myTerm = new CTerm(inputValue);
 			myTerm.Evaluate(myTerm.unevaluatedString);
 			var resultTerm = new CTerm("");
-		    resultTerm.terms = SimplifyTerms(myTerm);
+		    resultTerm = SimplifyTerms(myTerm);
 			resultTerm.unevaluatedString = Unparse(resultTerm.terms);
 			
 			resultsDiv.innerHTML = resultTerm.unevaluatedString;

@@ -455,8 +455,12 @@
 	{
 	   for (var i = 0; i < step4Terms.length; i++)
 	   {
-	     if (step4Terms[i].terms.length > 1)
+	     if (step4Terms[i].terms.length > 1 && !step4Terms[i].isParenthetical)
 		 {
+		     // This block is intended to reverse the clumping that I do of mult/div terms so that I can
+			 //   perform add/sub cancellations in that step of whole terms. These clumped terms should 
+			 //   be flattened out, so that the returned array of terms is just like the array of terms I 
+			 //   received.
 			 for (var j = 0; j < step4Terms[i].terms.length; j++)
 			 {
 			   // if this is the last subterm, give it the relationship of the parent
@@ -466,17 +470,18 @@
 			   }
 			   
 			   //alert("Pushing to final sub-term " + step4Terms[i].terms[j].unevaluatedString);
+			   step4Terms[i].terms[j].unevaluatedString = ResolveMetaData(step4Terms[i].terms[j]);
 			   finalTerm.terms.push(step4Terms[i].terms[j]);
-			   finalTerm
 			 }
 		 } 
 		 else 
 		 {
 		    //alert("Pushing to final term " + step4Terms[i].unevaluatedString);
+			step4Terms[i].unevaluatedString = ResolveMetaData(step4Terms[i]);
 		    finalTerm.terms.push(step4Terms[i]);
 		 }
 	   }	
-	}
+	}	   
 	
 	////////////////////////////////////////////////////////////////////////////////////
 	
@@ -621,6 +626,7 @@
 				   {
 				      DeleteFromArray(activeTerms, numeratorTerms[k].id);
 					  DeleteFromArray(numeratorTerms, numeratorTerms[k].id);
+					  resultExponent *= -1; // keep denominator sign exponent
 					  denominatorTerms[j].exponent.unevaluatedString = "" + resultExponent + "";
 				   }
 				   else 
@@ -839,12 +845,16 @@
 	{
 	   var returnValue = [];
 	   
-	   for (var i = 0; i < termInput.length; i++)
-	   {
-		  returnValue.push(termInput[i]);		  	   
-	      if (termInput[i].relationshipToNextTerm == "divide")
+	   returnValue.push(termInput[0]);	
+	   for (var i = 1; i < termInput.length; i++)
+	   {	  	   
+	      if (termInput[i-1].relationshipToNextTerm == "divide")
 		  {
-			 i++; //skip next element (the denominator)
+			 continue; //skip next element (the denominator)
+		  }
+		  else
+		  {
+		     returnValue.push(termInput[i]);	
 		  }
 	   }
 	   return returnValue;	
