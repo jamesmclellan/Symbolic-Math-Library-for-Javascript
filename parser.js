@@ -434,7 +434,7 @@
 						{
 							//                (i) look for multiple partial differentials; push each one onto the "withRespectTo" array
 							tempTerm.withRespectTo.push(stringIn.charAt(afterDivLocation + k + diffSymbolLength));
-							k = k + diffSymbolLength + 1;
+							k = k + diffSymbolLength;
 						}
                         this.PushTerm(tempTerm);						
 						returnValue = afterDivLocation + k; 
@@ -627,7 +627,7 @@
 		var tempString = Unparse(this.terms, false);
 		if (tempString != this.unevaluatedString)
 		{
-		   alert ("PARSE REDUNDANCY CHECK ERROR: Unparse returned " + tempString + " after parsing input " + this.unevaluatedString);
+		   //alert ("PARSE REDUNDANCY CHECK ERROR: Unparse returned " + tempString + " after parsing input " + this.unevaluatedString);
 		}
 	}
 

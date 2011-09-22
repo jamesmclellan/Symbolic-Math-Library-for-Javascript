@@ -186,6 +186,13 @@
 	   var tempString = "";
 	   
 	   //alert("MakeEquivalents called with the following indices " + PrintArray(indexArray));
+	   
+	   // if the first term in this set of indices is a division term, then this combination is invalid
+	   if (this.terms[indexArray[0]].relationshipToNextTerm == "divide")
+	   {
+	      return;
+	   }
+	   
 	   for (var i = 0; i < indexArray.length; i++)
 	   {
 	       // :NOTE: "terms" is an attribute generated outside this function
@@ -276,7 +283,7 @@
 				}				
 			}
 		    
-           if (additionTerms[j] != null)
+           if ((additionTerms[j] != null) && !(IsZero(additionTerms[j])))
            {		   
 			   //alert("Pushing add term " + additionTerms[j].unevaluatedString);
 			   var closestPrevious = GetClosestPreviousValue(additionTerms, j);
@@ -323,7 +330,7 @@
 			}
 			
 			
-		    if (subtractionTerms[j] != null)
+		    if ((subtractionTerms[j] != null) && !(IsZero(subtractionTerms[j])))
 		    {
 			   //alert("Pushing sub term " + subtractionTerms[j].unevaluatedString);
 			   var closestPrevious = GetClosestPreviousValue(subtractionTerms, j);
@@ -565,7 +572,7 @@
 					}
 				}
 			}
-		  }	
+		  } // end of add + subtraction term loop  
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////
@@ -923,6 +930,24 @@
 	   else
 	   {
 	      return true;
+	   }
+	}
+	
+	////////////////////////////////////////////////////////////////////////////////////	
+	
+	function IsZero(termIn)
+	{
+	   if (isNaN(parseFloat(termIn.unevaluatedString)) || termIn.terms.length > 1)
+	   {
+	      return false;
+	   }
+	   else if (parseFloat(termIn.unevaluatedString) == 0)
+	   {
+	      return true;
+	   }
+	   else
+	   {
+	      return false;
 	   }
 	}
 	

@@ -57,6 +57,7 @@
 	   this.ParsePar = ParseParen;
 	   this.ParseDiff = ParseDifferential;
 	   this.ParseExp = ParseExponent;
+	   this.Copy = CopyCTermNoExponent;
 	}	
 	
 	////////////////////////////////////////////////////////////////////////////////////
@@ -110,5 +111,74 @@
 	   this.ParseMul = ParseMultiplicationDivision;
 	   this.ParsePar = ParseParen;
 	   this.ParseDiff = ParseDifferential;
-	   this.ParseExp = ParseExponent;  
+	   this.ParseExp = ParseExponent; 
+	   this.Copy = CopyCTerm;
 	}	
+	
+	////////////////////////////////////////////////////////////////////////////////////
+
+    function CopyCTerm(destination)
+    {
+       var returnValue = destination;
+	   
+	   returnValue.relationshipToPreviousTerm = this.relationshipToPreviousTerm;
+	   returnValue.relationshipToNextTerm = this.relationshipToNextTerm;
+	   returnValue.operation = this.operation;
+	   for (var i = 0; i < this.withRespectTo.length; i++)
+	   {
+	      returnValue.withRespectTo.push(this.withRespectTo[i]);
+	   }
+	   
+	   for (i = 0; i < this.terms.length; i++)
+	   {
+	      returnValue.terms.push(this.terms[i].Copy());
+	   }
+
+	   for (i = 0; i < this.equivalentTerms.length; i++)
+	   {
+	      returnValue.equivalentTerms.push(this.equivalentTerms[i].Copy());
+	   }
+
+	   returnValue.unevaluatedString = this.unevaluatedString;
+	   returnValue.isNegative = this.isNegative;
+
+	   returnValue.multiplier = this.multiplier;
+	   returnValue.isParenthetical = this.isParenthetical;
+	         
+ 	   this.exponent.Copy(returnValue.exponent);
+	   
+    }	
+	
+	////////////////////////////////////////////////////////////////////////////////////
+
+    function CopyCTermNoExponent(destination)
+    {
+       var returnValue = destination;
+	   
+	   returnValue.relationshipToPreviousTerm = this.relationshipToPreviousTerm;
+	   returnValue.relationshipToNextTerm = this.relationshipToNextTerm;
+	   returnValue.operation = this.operation;
+	   for (var i = 0; i < this.withRespectTo.length; i++)
+	   {
+	      returnValue.withRespectTo.push(this.withRespectTo[i]);
+	   }
+	   
+	   for (i = 0; i < this.terms.length; i++)
+	   {
+	      returnValue.terms.push(this.terms[i].Copy());
+	   }
+
+	   for (i = 0; i < this.equivalentTerms.length; i++)
+	   {
+	      returnValue.equivalentTerms.push(this.equivalentTerms[i].Copy());
+	   }
+
+	   returnValue.unevaluatedString = this.unevaluatedString;
+	   returnValue.isNegative = this.isNegative;
+
+	   returnValue.multiplier = this.multiplier;
+	   returnValue.isParenthetical = this.isParenthetical;
+	   
+	   returnValue.exponent = this.exponent;
+	   
+    }		

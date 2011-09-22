@@ -7,7 +7,8 @@
 	   
 	   //alert ("Simplify called");
 	   var activeTerms = []; // the array of terms to be operated on
-	   var simplifiedTerms = []; // the array of results -- final, simplified terms
+	   var simplifiedTermsA = []; // the array of results -- final, simplified terms
+	   var simplifiedTermsB = []; // the array of results -- final, simplified terms
 	   var step3Terms = []; // term results of multiplication/division
 	   var step4Terms = []; // term results of addition/subtraction
 	   var finalTerms = [];
@@ -19,7 +20,6 @@
 	   
 	   for (var i = 0; i < termInput.terms.length; i++)
 	   {
-          /*	   
 	       // go right to left, per the order of operations
 		   if (termInput.terms[i].relationshipToNextTerm == "multiply" ||
 		       termInput.terms[i].relationshipToNextTerm == "divide")
@@ -38,15 +38,53 @@
 			   // :TODO: The "nextTermType" variable exists because somehow termInput.terms[i].relationshipToNextTerm is corrupted in the next few lines. Find the problem and fix it.
 			   activeTerms.push(termInput.terms[i]);
                //alert("Calling simplify multi/div! Term = " + termInput.terms[i].unevaluatedString + " type " + termInput.terms[i].relationshipToNextTerm);			
+			   simplifiedTermsA = activeTerms;
 			   if (activeTerms.length == 1)
 			   {
-                  simplifiedTerms = PerformSimplePartialDifferential(activeTerms);
+                  simplifiedTermsB = PerformSimplePartialDifferential(simplifiedTermsA);
 			   }
-			   //alert("Simplify mult/div returned " + simplifiedTerms.length + " terms, value " + simplifiedTerms[0].unevaluatedString);
+			   else
+			   {
+			      // use product rule (fg)' = f'g + fg'... 
+			      for (var j=0; j < simplifiedTermsA.length; j++)
+				  {
+				     for (var k=0; k < simplifiedTermsA.length; k++)
+					 {
+					    var myTerm = new CTerm("");
+						simplifiedTermsA[k].Copy(myTerm);
+						if (j==k)
+						{
+						   var retValues = PerformSimplePartialDifferential( myTerm, withRespectTo );
+						   for (var m = 0; m < retValues.length; m++)
+						   {
+							  simplifiedTermsB.push(retValues[m]);
+							  simplifiedTermsB[simplifiedTermsB.length-1].relationshipToNextTerm = "multiply";
+						   }						
+						}
+						else
+						{
+						   simplifiedTermsB.push(myTerm);
+						   simplifiedTermsB[simplifiedTermsB.length-1].relationshipToNextTerm = "multiply";
+						}
+					 }
+					 // change the term type of the last to addition
+					 simplifiedTermsB[simplifiedTermsB.length-1].relationshipToNextTerm = "addition";
+				  }
+			   }
 			   // copy the results of the simplification to a new CTerm
-               var myTerm = PackageMultDivReturnValue( simplifiedTerms, nextTermType );
-			   //alert("Pushing term " + myTerm.unevaluatedString + " type " + myTerm.relationshipToNextTerm + " isNegative " + myTerm.isNegative);
-			   step3Terms.push(myTerm);		
+	           var myTerm = new CTerm("", nextTermType, false);
+   	           myTerm.terms = simplifiedTermsB;
+	           myTerm.unevaluatedString = Unparse(myTerm.terms, true); // bubble all terms to the top
+			   myTerm.terms = [];
+			   myTerm.Evaluate(myTerm.unevaluatedString); // re-chunk the terms, so that simplify will work
+	           myTerm.isNegative = DetermineSign(myTerm.terms);
+	   
+			   var resultTerm = new CTerm("");
+	           resultTerm = SimplifyTerms(myTerm);
+			   for (var k = 0; k < resultTerm.terms.length; k++)
+			   {
+			      step3Terms.push(resultTerm.terms[k]);		
+			   }
 			   activeTerms = []; 
 			   bMultiplyDivideLatch = false;			   
 			}
@@ -54,43 +92,17 @@
 			//    the given string/array, then reset for the next possible string
 			else if (!bMultiplyDivideLatch)
 			{
-			   //alert("Blah2");
-			   step3Terms.push(termInput.terms[i]);
+			   var retValues = PerformSimplePartialDifferential( termInput.terms[i], withRespectTo );
+			   for (var k = 0; k < retValues.length; k++)
+		       {
+		          step3Terms.push(retValues[k]);
+		       }
 			} // end of multiplication-division handling subsection
-		  */
-		  
-		  var retValues = PerformSimplePartialDifferential(termInput.terms[i], withRespectTo);	
-		  for (var i = 0; i < retValues.length; i++)
-		  {
-		     step3Terms.push(retValues[i]);
-		  }
 	   } // done with term loop
 	   
-	   /*
-	   if (activeTerms.length > 0) {	   
-	       //alert("Called here too!");
-		   if (activeTerms.length == 1) {
-		      simplifiedTerms = PerformSimplePartialDifferential(activeTerms);	
-		   }
-		   //alert("Simplify multi/div returned " + unresolvedTerms.length + " terms");
-           var myTerm = PackageMultDivReturnValue( simplifiedTerms, "none" );		   
-		   //alert("Simplify mult/div returned " + unresolvedTerms.length + " terms");
-		   step3Terms = step3Terms.push(myTerm);
-	   }
-	   */
 	   
 	   // 4. handle addition/subtraction
-	   //alert("About to call add/sub with " + step3Terms.length + " terms. Term [0] = " + step3Terms[0].unevaluatedString);
-       //step4Terms = PerformAddSubtractPar(step3Terms);
 	   step4Terms = step3Terms;
-	   //alert("Simplify add/sub returned " + step4Terms.length + " terms");
-	   //alert("Simplify returned " + step4Terms[0].isNegative);
-	   //PushToFinal(finalTerms, step4Terms);
-	   //alert("PushToFinal returned " + finalTerms[0].isNegative);
-	   //if (finalTerms.length > 0)
-	   //{
-	   //   finalTerms[finalTerms.length - 1].relationshipToNextTerm = "none";
-	   //}
 
 	   return step4Terms;	
 	}
